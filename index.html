@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brushline Painting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a trade-site front (tape-blue accent, sturdy condensed headings) over an operator's back office with a left rail. */
+:root{
+  --paper:#F3F2EE;
+  --surface:#FFFFFF;
+  --ink:#1B232C;
+  --muted:#5D6772;
+  --line:#DAD9D3;
+  --accent:#1F6FB8;
+  --accent-soft:#E3EEF8;
+  --accent-ink:#FFFFFF;
+  --ok:#2E7D4F; --ok-soft:#E2F2E8;
+  --warn:#A86A00; --warn-soft:#FBEFD9;
+  --bad:#B33A3A; --bad-soft:#F8E3E3;
+  --info:#5B4DB0; --info-soft:#ECE9F8;
+  --shadow:0 1px 2px rgba(20,30,40,.06),0 6px 20px rgba(20,30,40,.06);
+  --font-display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --font-body:"Source Sans 3","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --r:10px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#12171C;--surface:#1A2128;--ink:#E7EAED;--muted:#9AA4AE;--line:#2D3640;
+    --accent:#5DA8EA;--accent-soft:#1C3247;--accent-ink:#0D1620;
+    --ok:#6CC791;--ok-soft:#173326;--warn:#E3B04F;--warn-soft:#3A2D12;--bad:#EE8080;--bad-soft:#3D1D1D;--info:#AFA4F2;--info-soft:#262143;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#12171C;--surface:#1A2128;--ink:#E7EAED;--muted:#9AA4AE;--line:#2D3640;
+  --accent:#5DA8EA;--accent-soft:#1C3247;--accent-ink:#0D1620;
+  --ok:#6CC791;--ok-soft:#173326;--warn:#E3B04F;--warn-soft:#3A2D12;--bad:#EE8080;--bad-soft:#3D1D1D;--info:#AFA4F2;--info-soft:#262143;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.5}
+h1,h2,h3,h4{font-family:var(--font-display);font-stretch:85%;line-height:1.1;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(34px,5.4vw,58px);font-weight:800}
+h2{font-size:clamp(26px,3.4vw,38px);font-weight:800}
+h3{font-size:20px;font-weight:700}
+p{margin:0}
+a{color:var(--accent)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--surface);padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;text-decoration:none;color:var(--ink)}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.small{padding:6px 10px;font-size:14px}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.ghost:hover{background:var(--accent-soft)}
+.btn.danger{color:var(--bad)}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:14px;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%}
+.field textarea{min-height:80px;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:640px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* ---------- Public header ---------- */
+.topbar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:18px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:800;font-stretch:80%;font-size:22px;color:var(--ink);text-decoration:none;white-space:nowrap}
+.brand .mark{width:30px;height:30px;border-radius:6px;background:var(--accent);display:grid;place-items:center}
+.nav{display:flex;gap:4px;margin-left:auto;flex-wrap:nowrap;overflow-x:auto}
+.nav a{padding:8px 10px;border-radius:6px;text-decoration:none;color:var(--ink);font-weight:600;font-size:15px;white-space:nowrap}
+.nav a:hover{background:var(--accent-soft)}
+.lang{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+.lang button{border:0;background:transparent;padding:6px 10px;font-weight:700;font-size:13px;cursor:pointer;color:var(--muted)}
+.lang button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+@media (max-width:860px){.nav{display:none}}
+
+/* ---------- Hero ---------- */
+.hero{padding:56px 0 40px}
+.hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+.hero p.lead{font-size:20px;color:var(--muted);margin-top:16px;max-width:34em}
+.hero .ctas{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap}
+.hero .facts{display:flex;gap:26px;margin-top:30px;flex-wrap:wrap}
+.hero .facts div{display:flex;flex-direction:column}
+.hero .facts b{font-family:var(--font-display);font-size:26px;font-stretch:85%}
+.hero .facts span{font-size:14px;color:var(--muted)}
+.hero-art{border-radius:14px;overflow:hidden;box-shadow:var(--shadow);background:var(--surface);border:1px solid var(--line)}
+.tape{display:inline-block;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:4px;margin-bottom:14px}
+@media (max-width:860px){.hero .wrap{grid-template-columns:1fr}}
+
+section.block{padding:56px 0;border-top:1px solid var(--line)}
+.sec-head{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:26px;flex-wrap:wrap}
+.sec-head p{color:var(--muted);max-width:36em;margin-top:8px}
+
+/* Services */
+.services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.svc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:8px}
+.svc .ico{width:40px;height:40px;border-radius:8px;background:var(--accent-soft);display:grid;place-items:center;color:var(--accent)}
+.svc p{color:var(--muted);font-size:15px}
+.svc .from{margin-top:auto;font-size:14px;font-weight:600}
+@media (max-width:860px){.services{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.services{grid-template-columns:1fr}}
+
+/* Colors */
+.colors{display:grid;grid-template-columns:1fr 1.05fr;gap:24px;align-items:start}
+@media (max-width:900px){.colors{grid-template-columns:1fr}}
+.fam-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.swatches{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.sw{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface);cursor:pointer;text-align:left;padding:0}
+.sw .c{height:62px}
+.sw .n{padding:7px 9px;font-size:14px;font-weight:600;display:flex;justify-content:space-between;gap:6px}
+.sw .n small{color:var(--muted);font-weight:500}
+.sw[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:1px}
+.preview{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;position:sticky;top:80px}
+.preview svg{width:100%;height:auto;display:block;border-radius:8px}
+.pv-ctrl{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:6px 12px;font-weight:600;font-size:14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.trim-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:14px}
+.dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+.dot[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.picks{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;min-height:30px;align-items:center}
+.pick{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 8px 3px 4px;font-size:13px;background:var(--surface)}
+.pick i{width:18px;height:18px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.12)}
+.pick button{border:0;background:none;cursor:pointer;color:var(--muted);padding:0 2px;font-size:15px;line-height:1}
+
+/* Designs */
+.designs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.dz{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.dz svg{display:block;width:100%;height:auto}
+.dz .b{padding:12px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.dz p{font-size:14px;color:var(--muted)}
+.dz .b .btn{margin-top:auto}
+@media (max-width:1000px){.designs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){.designs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Estimator */
+.est{display:grid;grid-template-columns:1.25fr .9fr;gap:24px;align-items:start}
+@media (max-width:900px){.est{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.panel + .panel{margin-top:16px}
+.step{display:flex;flex-direction:column;gap:12px}
+.step + .step{margin-top:22px;padding-top:20px;border-top:1px dashed var(--line)}
+.step h3{display:flex;align-items:center;gap:10px}
+.step h3 .n{width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--paper);font-size:14px;display:grid;place-items:center;font-stretch:100%}
+.opts{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.opt{position:relative}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt label{display:flex;flex-direction:column;gap:3px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;height:100%;background:var(--surface)}
+.opt label b{font-size:15px}
+.opt label span{font-size:13px;color:var(--muted);line-height:1.35}
+.opt input:checked + label{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)}
+.opt input:focus-visible + label{outline:3px solid var(--accent);outline-offset:2px}
+.helper{background:var(--paper);border:1px dashed var(--line);border-radius:8px;padding:12px;display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.helper .field{width:90px}
+.check{display:flex;gap:8px;align-items:center;font-weight:600;font-size:15px}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.result{position:sticky;top:80px}
+.result .range{font-family:var(--font-display);font-size:44px;font-weight:800;font-stretch:80%;line-height:1;margin:8px 0 4px}
+.result dl{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:16px 0 0;font-size:15px}
+.result dt{color:var(--muted)}
+.result dd{margin:0;font-weight:600;text-align:right}
+.note{font-size:13px;color:var(--muted);margin-top:12px}
+.success{background:var(--ok-soft);color:var(--ok);border-radius:8px;padding:12px;font-weight:600}
+.err{color:var(--bad);font-size:14px;font-weight:600}
+
+/* Process */
+.steps4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;counter-reset:s}
+.steps4 > div{border-top:3px solid var(--accent);padding-top:12px}
+.steps4 b{font-family:var(--font-display);font-size:18px;display:block;margin-bottom:4px}
+.steps4 p{font-size:15px;color:var(--muted)}
+@media (max-width:760px){.steps4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+footer{border-top:1px solid var(--line);padding:30px 0 40px;font-size:15px}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+/* ---------- Admin ---------- */
+#admin{display:none;min-height:100%}
+body.is-admin #public{display:none}
+body.is-admin #admin{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+.rail{background:var(--ink);color:var(--paper);padding:18px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+.rail .brand{color:var(--paper);font-size:19px;padding:0 8px 14px}
+.rail button.tab{display:flex;align-items:center;gap:10px;border:0;background:transparent;color:inherit;opacity:.78;padding:9px 10px;border-radius:7px;cursor:pointer;font-weight:600;text-align:left;font-size:15px}
+.rail button.tab:hover{opacity:1;background:rgba(255,255,255,.07)}
+.rail button.tab[aria-current="true"]{opacity:1;background:rgba(255,255,255,.13)}
+.rail button.tab .badge{margin-left:auto;background:var(--accent);color:#fff;border-radius:999px;font-size:12px;padding:1px 7px}
+.rail .foot{margin-top:auto;display:flex;flex-direction:column;gap:6px;font-size:13px;opacity:.8;padding:8px}
+.rail .lang button[aria-pressed="true"]{background:rgba(255,255,255,.9);color:var(--ink)!important;text-decoration:none}
+.rail .lang button{text-decoration:none!important;padding:4px 10px!important}
+.rail .foot a,.rail .foot > button{color:inherit;background:none;border:0;padding:0;text-align:left;cursor:pointer;text-decoration:underline;font-size:13px}
+.main{padding:26px 28px 60px;min-width:0}
+.main-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.main-head h2{font-size:30px}
+.tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.tile span{font-size:13px;color:var(--muted);font-weight:600;display:block}
+.tile b{font-family:var(--font-display);font-size:28px;font-stretch:85%;display:block;margin-top:4px}
+.tile small{font-size:12px;color:var(--muted)}
+@media (max-width:1200px){.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:1000px){.cols2{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.card > h3{padding:14px 16px;border-bottom:1px solid var(--line);font-size:17px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card .body{padding:14px 16px}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th{text-align:left;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface)}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--accent-soft)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:700;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.p-new,.p-scheduled{background:var(--info-soft);color:var(--info)}
+.p-contacted,.p-quoted,.p-in_progress{background:var(--warn-soft);color:var(--warn)}
+.p-won,.p-done,.p-paid{background:var(--ok-soft);color:var(--ok)}
+.p-lost,.p-canceled,.p-unpaid{background:var(--bad-soft);color:var(--bad)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.empty{padding:30px 16px;text-align:center;color:var(--muted)}
+.empty .btn{margin-top:12px}
+.list-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center}
+.list-row:last-child{border-bottom:0}
+.list-row small{color:var(--muted);display:block}
+.bar{height:8px;background:var(--paper);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.mode-note{font-size:13px;padding:8px 12px;border-radius:8px;background:var(--warn-soft);color:var(--warn);font-weight:600}
+.mode-note.ok{background:var(--ok-soft);color:var(--ok)}
+
+/* calendar */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--line);gap:1px}
+.cal .dh{background:var(--surface);padding:8px;font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.05em}
+.cal .d{background:var(--surface);min-height:104px;padding:6px;display:flex;flex-direction:column;gap:3px}
+.cal .d.out{background:var(--paper)}
+.cal .d .dn{font-size:13px;font-weight:700;color:var(--muted)}
+.cal .d.today .dn{color:var(--accent-ink);background:var(--accent);border-radius:50%;width:24px;height:24px;display:grid;place-items:center}
+.cal .ev{font-size:12px;font-weight:600;border-radius:4px;padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border:0;text-align:left}
+@media (max-width:700px){.cal .d{min-height:70px}.cal .ev{font-size:10px;padding:1px 3px}}
+
+/* login */
+.login{grid-column:1/-1;min-height:100vh;display:grid;place-items:center;padding:20px}
+.login .panel{width:min(380px,100%);display:flex;flex-direction:column;gap:14px}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(10,15,20,.5);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow-y:auto}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:12px;width:min(640px,100%);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line)}
+.modal .mb{padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.modal footer{border-top:1px solid var(--line);padding:14px 20px;display:flex;justify-content:flex-end;gap:8px}
+.multi{display:flex;flex-wrap:wrap;gap:8px}
+.multi label{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:14px;color:var(--ink);font-weight:500}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:15px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:600}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:8px;font-weight:600;z-index:60;display:none}
+.toast.show{display:block}
+
+@media (max-width:860px){
+  body.is-admin #admin{grid-template-columns:1fr}
+  .rail{position:sticky;top:0;height:auto;flex-direction:row;overflow-x:auto;padding:8px;z-index:10}
+  .rail .brand,.rail .foot{display:none}
+  .rail button.tab{white-space:nowrap;font-size:14px}
+  .main{padding:18px 16px 50px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+</style>
+</head>
+<body>
+
+<!-- ================= PUBLIC SITE ================= -->
+<div id="public">
+  <header class="topbar">
+    <div class="wrap">
+      <a class="brand" href="#top"><span class="mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="15" height="7" rx="1.5"/><path d="M18 6.5h3v5h-9v3"/><rect x="10" y="14.5" width="4" height="7" rx="1"/></svg></span><span class="js-bizname">Brushline Painting</span></a>
+      <nav class="nav" aria-label="Main">
+        <a href="#services" data-i18n="nav.services">Services</a>
+        <a href="#colors" data-i18n="nav.colors">Colors</a>
+        <a href="#designs" data-i18n="nav.designs">Design ideas</a>
+        <a href="#estimate" data-i18n="nav.estimate">Free estimate</a>
+        <a href="#contact" data-i18n="nav.contact">Contact</a>
+      </nav>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="es" aria-pressed="false">ES</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero" id="top">
+    <div class="wrap">
+      <div>
+        <span class="tape" data-i18n="hero.tag">Licensed &amp; insured · Free estimates</span>
+        <h1 data-i18n="hero.title">Clean lines, careful prep, a finish that lasts.</h1>
+        <p class="lead" data-i18n="hero.lead">Interior and exterior painting for homes and small businesses. Pick your colors, see a design, and get a price range in two minutes.</p>
+        <div class="ctas">
+          <a class="btn primary" href="#estimate" data-i18n="hero.cta">Get my estimate</a>
+          <a class="btn" href="#colors" data-i18n="hero.cta2">Explore colors</a>
+        </div>
+        <div class="facts">
+          <div><b class="num">2</b><span data-i18n="hero.f1">coats on every job</span></div>
+          <div><b class="num">48 h</b><span data-i18n="hero.f2">to get your written quote</span></div>
+          <div><b class="num">2 yr</b><span data-i18n="hero.f3">workmanship warranty</span></div>
+        </div>
+      </div>
+      <div class="hero-art" id="heroArt"></div>
+    </div>
+  </section>
+
+  <section class="block" id="services">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><h2 data-i18n="svc.title">What we paint</h2><p data-i18n="svc.sub">Every job includes surface prep, masking, two coats and a full clean-up.</p></div>
+      </div>
+      <div class="services" id="svcList"></div>
+    </div>
+  </section>
+
+  <section class="block" id="colors">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><h2 data-i18n="col.title">Find your color</h2><p data-i18n="col.sub">Tap a color to see it on the walls. Save the ones you like and they go with your estimate request.</p></div>
+      </div>
+      <div class="colors">
+        <div>
+          <div class="fam-tabs" id="famTabs" role="group" aria-label="Color family"></div>
+          <div class="swatches" id="swatches"></div>
+        </div>
+        <div class="preview">
+          <div class="pv-ctrl">
+            <div class="seg" role="group" aria-label="Preview">
+              <button type="button" data-pv="room" aria-pressed="true" data-i18n="col.room">Room</button>
+              <button type="button" data-pv="house" aria-pressed="false" data-i18n="col.house">House</button>
+            </div>
+            <button type="button" class="btn small primary" id="saveColor" data-i18n="col.save">Save this color</button>
+          </div>
+          <div id="pvArt"></div>
+          <div class="trim-row"><span class="muted" data-i18n="col.trim">Trim:</span><span id="trimDots" style="display:flex;gap:8px"></span><span class="muted" id="pvName" style="margin-left:auto;font-weight:600"></span></div>
+          <div class="picks" id="picks"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="designs">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><h2 data-i18n="dz.title">Design ideas</h2><p data-i18n="dz.sub">Five ways to use color in a room. Pick one and the estimate updates.</p></div>
+      </div>
+      <div class="designs" id="dzList"></div>
+    </div>
+  </section>
+
+  <section class="block" id="estimate">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><h2 data-i18n="est.title">Free estimate</h2><p data-i18n="est.sub">Prices are per square foot of surface painted, adjusted for finish style and how hard the job is.</p></div>
+      </div>
+      <div class="est">
+        <form class="panel" id="estForm" novalidate>
+          <div class="step">
+            <h3><span class="n">1</span><span data-i18n="est.s1">Type of project</span></h3>
+            <div class="opts" id="optType"></div>
+          </div>
+          <div class="step">
+            <h3><span class="n">2</span><span data-i18n="est.s2">Size</span></h3>
+            <div class="helper" id="roomHelper">
+              <div class="field"><label for="hL" data-i18n="est.len">Length (ft)</label><input id="hL" type="number" min="0" inputmode="decimal" value="14"></div>
+              <div class="field"><label for="hW" data-i18n="est.wid">Width (ft)</label><input id="hW" type="number" min="0" inputmode="decimal" value="12"></div>
+              <div class="field"><label for="hH" data-i18n="est.hei">Height (ft)</label><input id="hH" type="number" min="0" inputmode="decimal" value="9"></div>
+              <button type="button" class="btn small" id="hAdd" data-i18n="est.addroom">Add this room</button>
+              <span class="muted" style="font-size:13px;flex-basis:100%" data-i18n="est.helper">Don't know your square footage? Enter a room and we add its walls and ceiling for you.</span>
+            </div>
+            <div class="grid2">
+              <div class="field" id="fArea"><label for="eArea" data-i18n="est.area">Wall area (sq ft)</label><input id="eArea" type="number" min="0" inputmode="numeric" value="0"></div>
+              <div class="field" id="fCeil"><label for="eCeil" data-i18n="est.ceil">Ceiling area (sq ft)</label><input id="eCeil" type="number" min="0" inputmode="numeric" value="0"></div>
+              <div class="field" id="fCab" hidden><label for="eCab" data-i18n="est.cab">Cabinet doors + drawer fronts</label><input id="eCab" type="number" min="0" inputmode="numeric" value="24"></div>
+              <div class="field"><label for="eTrim" data-i18n="est.trim">Trim / baseboard (linear ft)</label><input id="eTrim" type="number" min="0" inputmode="numeric" value="0"></div>
+              <div class="field"><label for="eDoors" data-i18n="est.doors">Doors to paint</label><input id="eDoors" type="number" min="0" inputmode="numeric" value="0"></div>
+            </div>
+          </div>
+          <div class="step">
+            <h3><span class="n">3</span><span data-i18n="est.s3">Painting style</span></h3>
+            <div class="opts" id="optStyle"></div>
+          </div>
+          <div class="step">
+            <h3><span class="n">4</span><span data-i18n="est.s4">Difficulty</span></h3>
+            <div class="opts" id="optDiff"></div>
+          </div>
+          <div class="step">
+            <h3><span class="n">5</span><span data-i18n="est.s5">Paint &amp; coats</span></h3>
+            <div class="grid2">
+              <div class="field"><label for="eCoats" data-i18n="est.coats">Coats</label><select id="eCoats"><option value="1" data-i18n="est.c1">1 coat (same color refresh)</option><option value="2" selected data-i18n="est.c2">2 coats (recommended)</option></select></div>
+              <div class="field"><label for="eQual" data-i18n="est.qual">Paint line</label><select id="eQual"><option value="std" data-i18n="est.std">Standard</option><option value="prem" data-i18n="est.prem">Premium (washable, low odor)</option></select></div>
+            </div>
+            <label class="check"><input type="checkbox" id="ePrimer"><span data-i18n="est.primer">Needs primer (stains, bare drywall, big color change)</span></label>
+          </div>
+        </form>
+
+        <div class="result">
+          <div class="panel">
+            <span class="tape" data-i18n="res.tag">Your estimate</span>
+            <div class="range num" id="rRange">$0</div>
+            <p class="muted" data-i18n="res.sub">Estimated range, labor and materials included</p>
+            <dl id="rDl"></dl>
+            <p class="note" data-i18n="res.note">Final price is confirmed after a free on-site visit. Most quotes land inside this range.</p>
+          </div>
+          <form class="panel" id="reqForm" novalidate>
+            <h3 data-i18n="req.title">Send me this estimate</h3>
+            <div class="field"><label for="qName" data-i18n="req.name">Full name</label><input id="qName" autocomplete="name"></div>
+            <div class="grid2">
+              <div class="field"><label for="qPhone" data-i18n="req.phone">Phone</label><input id="qPhone" type="tel" autocomplete="tel"></div>
+              <div class="field"><label for="qEmail" data-i18n="req.email">Email</label><input id="qEmail" type="email" autocomplete="email"></div>
+            </div>
+            <div class="field"><label for="qAddr" data-i18n="req.addr">Project address</label><input id="qAddr" autocomplete="street-address"></div>
+            <div class="field"><label for="qDate" data-i18n="req.date">Preferred start date</label><input id="qDate" type="date"></div>
+            <div class="field"><label for="qNotes" data-i18n="req.notes">Anything we should know?</label><textarea id="qNotes"></textarea></div>
+            <div><span class="muted" style="font-size:14px;font-weight:600" data-i18n="req.colors">Colors you saved</span><div class="picks" id="picks2"></div></div>
+            <p class="err" id="qErr" hidden></p>
+            <button class="btn primary" type="submit" data-i18n="req.send">Request my quote</button>
+            <div class="success" id="qOk" hidden data-i18n="req.ok">Thanks! We got your request and will call you within 48 hours.</div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="sec-head"><div><h2 data-i18n="how.title">How a job runs</h2></div></div>
+      <div class="steps4">
+        <div><b data-i18n="how.1t">Estimate</b><p data-i18n="how.1">Online range today, written quote after a free visit.</p></div>
+        <div><b data-i18n="how.2t">Prep</b><p data-i18n="how.2">We move and cover furniture, patch holes, sand and tape.</p></div>
+        <div><b data-i18n="how.3t">Paint</b><p data-i18n="how.3">Two coats with the line and colors you chose.</p></div>
+        <div><b data-i18n="how.4t">Walkthrough</b><p data-i18n="how.4">We check every wall with you before we pack up.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <footer id="contact">
+    <div class="wrap">
+      <div>
+        <div class="brand" style="font-size:20px"><span class="js-bizname">Brushline Painting</span></div>
+        <p class="muted js-bizarea" style="margin-top:6px"></p>
+      </div>
+      <div>
+        <p><b data-i18n="ft.call">Call or text</b>: <span class="num js-bizphone"></span></p>
+        <p><b data-i18n="ft.email">Email</b>: <span class="js-bizemail"></span></p>
+        <p class="muted" style="margin-top:6px" data-i18n="ft.hours">Mon–Sat, 7 am – 6 pm</p>
+      </div>
+      <div style="align-self:end"><a href="#admin" class="muted" style="font-size:14px" data-i18n="ft.admin">Owner login</a></div>
+    </div>
+  </footer>
+</div>
+
+<!-- ================= ADMIN ================= -->
+<div id="admin">
+  <div class="login" id="loginView">
+    <form class="panel" id="loginForm">
+      <h2 data-i18n="adm.login">Owner panel</h2>
+      <p class="muted" data-i18n="adm.loginsub">Enter your PIN to manage quotes, jobs and payments.</p>
+      <div class="field"><label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" autocomplete="current-password"></div>
+      <p class="err" id="pinErr" hidden data-i18n="adm.pinerr">That PIN doesn't match. Try again.</p>
+      <button class="btn primary" type="submit" data-i18n="adm.enter">Open panel</button>
+      <p class="muted" style="font-size:13px" data-i18n="adm.pinhint">Prototype PIN: 1234. Change it in Settings.</p>
+      <a href="#top" style="font-size:14px" data-i18n="adm.back">← Back to website</a>
+    </form>
+  </div>
+  <aside class="rail" id="rail" hidden>
+    <div class="brand"><span class="js-bizname">Brushline Painting</span></div>
+    <div id="tabs" style="display:contents"></div>
+    <div class="foot">
+      <a href="#top" data-i18n="adm.site">View website</a>
+      <button type="button" id="logout" data-i18n="adm.logout">Lock panel</button>
+      <div class="lang" role="group" aria-label="Language" style="margin-top:6px;border-color:rgba(255,255,255,.25);align-self:flex-start">
+        <button type="button" data-lang="en" aria-pressed="true" style="color:inherit">EN</button>
+        <button type="button" data-lang="es" aria-pressed="false" style="color:inherit">ES</button>
+      </div>
+    </div>
+  </aside>
+  <main class="main" id="main" hidden></main>
+</div>
+
+<div class="modal-bg" id="modalBg" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <header><h3 id="modalTitle"></h3><button type="button" class="btn ghost small" id="modalX" aria-label="Close">✕</button></header>
+    <div class="mb" id="modalBody"></div>
+    <footer id="modalFoot"></footer>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* =========================================================
+   i18n
+   ========================================================= */
+const I18N = {
+en:{
+"nav.services":"Services","nav.colors":"Colors","nav.designs":"Design ideas","nav.estimate":"Free estimate","nav.contact":"Contact",
+"hero.tag":"Licensed & insured · Free estimates","hero.title":"Clean lines, careful prep, a finish that lasts.","hero.lead":"Interior and exterior painting for homes and small businesses. Pick your colors, see a design, and get a price range in two minutes.","hero.cta":"Get my estimate","hero.cta2":"Explore colors","hero.f1":"coats on every job","hero.f2":"to get your written quote","hero.f3":"workmanship warranty",
+"svc.title":"What we paint","svc.sub":"Every job includes surface prep, masking, two coats and a full clean-up.","svc.from":"From",
+"svc.interior":"Interior walls & ceilings","svc.interior.d":"Living rooms, bedrooms, kitchens and hallways. Furniture moved and covered.",
+"svc.exterior":"Exterior siding & trim","svc.exterior.d":"Power wash, scrape, caulk and prime before two coats of exterior paint.",
+"svc.cabinets":"Kitchen cabinets","svc.cabinets.d":"Degrease, sand and spray-finish doors for a factory-smooth look.",
+"svc.deck":"Decks & fences","svc.deck.d":"Clean, brighten and stain or seal wood that takes the sun and rain.",
+"svc.drywall":"Drywall repair","svc.drywall.d":"Holes, cracks and water spots patched and textured to match.",
+"svc.commercial":"Offices & retail","svc.commercial.d":"Night and weekend scheduling so your business stays open.",
+"unit.sqft":"/ sq ft","unit.piece":"/ piece","unit.lf":"/ lin ft",
+"col.title":"Find your color","col.sub":"Tap a color to see it on the walls. Save the ones you like and they go with your estimate request.","col.room":"Room","col.house":"House","col.save":"Save this color","col.saved":"Saved","col.trim":"Trim:","col.nopicks":"No saved colors yet.",
+"fam.whites":"Whites","fam.neutrals":"Neutrals","fam.blues":"Blues","fam.greens":"Greens","fam.warm":"Warm & earth","fam.bold":"Bold & dark",
+"trim.white":"White","trim.off":"Off-white","trim.black":"Black","trim.match":"Match wall",
+"dz.title":"Design ideas","dz.sub":"Five ways to use color in a room. Pick one and the estimate updates.","dz.use":"Use this style","dz.using":"Selected",
+"style.single":"One color","style.single.d":"Walls in one color, ceiling white, trim white. Fast and clean.",
+"style.accent":"Accent wall","style.accent.d":"One wall in a deeper color to anchor the room.",
+"style.twotone":"Two-tone","style.twotone.d":"Two colors split by a chair rail or a crisp taped line.",
+"style.drench":"Color drench","style.drench.d":"Walls, trim and ceiling in one color for a cozy, modern room.",
+"style.specialty":"Specialty finish","style.specialty.d":"Limewash, venetian plaster or texture. Hand-applied.",
+"est.title":"Free estimate","est.sub":"Prices are per square foot of surface painted, adjusted for finish style and how hard the job is.","est.s1":"Type of project","est.s2":"Size","est.s3":"Painting style","est.s4":"Difficulty","est.s5":"Paint & coats",
+"type.interior":"Interior","type.interior.d":"Walls, ceilings, trim and doors","type.exterior":"Exterior","type.exterior.d":"Siding, trim, doors, soffits","type.cabinets":"Cabinets","type.cabinets.d":"Doors, drawer fronts, boxes",
+"est.len":"Length (ft)","est.wid":"Width (ft)","est.hei":"Height (ft)","est.addroom":"Add this room","est.helper":"Don't know your square footage? Enter a room and we add its walls and ceiling for you.",
+"est.area":"Wall area (sq ft)","est.areaExt":"Exterior wall area (sq ft)","est.ceil":"Ceiling area (sq ft)","est.cab":"Cabinet doors + drawer fronts","est.trim":"Trim / baseboard (linear ft)","est.doors":"Doors to paint",
+"diff.easy":"Easy","diff.easy.d":"Empty or light furniture, walls in good shape, standard height.",
+"diff.medium":"Medium","diff.medium.d":"Furnished rooms, some patching, a few tricky corners.",
+"diff.hard":"Hard","diff.hard.d":"Ceilings over 10 ft, ladders/scaffold, heavy repair or lots of detail.",
+"est.coats":"Coats","est.c1":"1 coat (same color refresh)","est.c2":"2 coats (recommended)","est.qual":"Paint line","est.std":"Standard","est.prem":"Premium (washable, low odor)","est.primer":"Needs primer (stains, bare drywall, big color change)",
+"res.tag":"Your estimate","res.sub":"Estimated range, labor and materials included","res.note":"Final price is confirmed after a free on-site visit. Most quotes land inside this range.",
+"res.surface":"Surface to paint","res.gallons":"Paint needed","res.days":"Time on site (2-person crew)","res.style":"Style","res.diff":"Difficulty","res.gal":"gal","res.dayU":"days","res.day1":"day","res.min":"Includes our job minimum",
+"req.title":"Send me this estimate","req.name":"Full name","req.phone":"Phone","req.email":"Email","req.addr":"Project address","req.date":"Preferred start date","req.notes":"Anything we should know?","req.colors":"Colors you saved","req.send":"Request my quote","req.ok":"Thanks! We got your request and will call you within 48 hours.","req.err":"Please add your name and a phone number or email so we can reach you.","req.errArea":"Add the size of the job in step 2 first.","req.errSave":"We couldn't save your request. Please call us instead.",
+"how.title":"How a job runs","how.1t":"Estimate","how.1":"Online range today, written quote after a free visit.","how.2t":"Prep","how.2":"We move and cover furniture, patch holes, sand and tape.","how.3t":"Paint","how.3":"Two coats with the line and colors you chose.","how.4t":"Walkthrough","how.4":"We check every wall with you before we pack up.",
+"ft.call":"Call or text","ft.email":"Email","ft.hours":"Mon–Sat, 7 am – 6 pm","ft.admin":"Owner login",
+"adm.login":"Owner panel","adm.loginsub":"Enter your PIN to manage quotes, jobs and payments.","adm.pinerr":"That PIN doesn't match. Try again.","adm.enter":"Open panel","adm.pinhint":"Prototype PIN: 1234. Change it in Settings.","adm.back":"← Back to website","adm.site":"View website","adm.logout":"Lock panel",
+"tab.dash":"Overview","tab.quotes":"Quotes","tab.jobs":"Jobs","tab.cal":"Calendar","tab.clients":"Clients","tab.exp":"Materials & expenses","tab.team":"Crew & pay","tab.set":"Settings",
+"k.new":"New quote requests","k.active":"Active jobs","k.billed":"Billed this month","k.costs":"Costs this month","k.profit":"Profit on jobs finished this month","k.due":"Still to collect","k.margin":"margin",
+"d.upcoming":"Next 14 days","d.recent":"Latest quote requests","d.owed":"Owed to crew","d.none":"Nothing here yet.","d.bycat":"Costs by category this month",
+"st.new":"New","st.contacted":"Contacted","st.quoted":"Quoted","st.won":"Won","st.lost":"Lost","st.scheduled":"Scheduled","st.in_progress":"In progress","st.done":"Done","st.canceled":"Canceled","st.paid":"Paid","st.unpaid":"Unpaid",
+"c.date":"Date","c.client":"Client","c.type":"Type","c.size":"Size","c.range":"Estimate","c.status":"Status","c.job":"Job","c.dates":"Dates","c.crew":"Crew","c.price":"Price","c.collected":"Collected","c.costs":"Costs","c.profit":"Profit","c.phone":"Phone","c.email":"Email","c.address":"Address","c.jobs":"Jobs","c.cat":"Category","c.desc":"Description","c.gal":"Gallons","c.amount":"Amount","c.name":"Name","c.role":"Role","c.rate":"Rate / hr","c.hours":"Hours","c.paid":"Paid","c.employee":"Crew member","c.notes":"Notes","c.start":"Start","c.end":"End","c.title":"Job name","c.sqft":"Sq ft","c.colors":"Colors","c.deposit":"Amount collected","c.pref":"Preferred date","c.style":"Style","c.diff":"Difficulty","c.source":"Source","c.lang":"Language",
+"a.add":"Add","a.newjob":"New job","a.newclient":"New client","a.newexp":"Add expense","a.newemp":"Add crew member","a.newhours":"Log hours","a.convert":"Make it a job","a.view":"View","a.edit":"Edit","a.delete":"Delete","a.save":"Save","a.cancel":"Cancel","a.close":"Close","a.markpaid":"Mark paid","a.prev":"← Prev","a.next":"Next →","a.today":"Today","a.sample":"Load sample data","a.clear":"Delete all data","a.all":"All","a.confirmDel":"Delete this for good?","a.confirmClear":"This deletes every quote, job, client, expense and pay record. Type DELETE to confirm.",
+"cat.paint":"Paint","cat.supplies":"Supplies","cat.rental":"Equipment rental","cat.fuel":"Gas & travel","cat.other":"Other",
+"role.lead":"Crew lead","role.painter":"Painter","role.helper":"Helper",
+"set.biz":"Business","set.bname":"Business name","set.bphone":"Phone","set.bemail":"Email","set.barea":"Service area (shown on the site)","set.rates":"Pricing used by the website estimator","set.rint":"Interior walls $/sq ft","set.rext":"Exterior $/sq ft","set.rceil":"Ceilings $/sq ft","set.rcab":"Cabinets $/piece","set.rtrim":"Trim $/linear ft","set.rdoor":"Doors $/door","set.rprimer":"Primer $/sq ft","set.rmin":"Job minimum $","set.mult":"Multipliers","set.security":"Panel PIN","set.pin":"New PIN","set.data":"Data","set.saved":"Settings saved",
+"m.newquote":"New quote request","m.jobdetail":"Job detail","m.saved":"Saved","m.deleted":"Deleted","m.converted":"Job created from the quote","m.sampled":"Sample data loaded",
+"mode.db":"Data is saved online and shared with everyone you give edit access.","mode.local":"Preview mode: data is saved only in this browser.",
+"j.breakdown":"Money on this job","j.materials":"Materials & expenses","j.labor":"Crew labor","j.balance":"Balance due","j.noexp":"No costs logged yet.",
+"q.est":"Website estimate","q.fromweb":"Website","q.manual":"Manual","cal.more":"more","team.owed":"Unpaid","team.week":"Hours this week"
+},
+es:{
+"nav.services":"Servicios","nav.colors":"Colores","nav.designs":"Ideas de diseño","nav.estimate":"Presupuesto gratis","nav.contact":"Contacto",
+"hero.tag":"Con licencia y seguro · Presupuestos gratis","hero.title":"Líneas limpias, buena preparación y un acabado que dura.","hero.lead":"Pintura interior y exterior para casas y negocios pequeños. Elige tus colores, mira un diseño y recibe un rango de precio en dos minutos.","hero.cta":"Calcular mi presupuesto","hero.cta2":"Ver colores","hero.f1":"capas en cada trabajo","hero.f2":"para tu cotización por escrito","hero.f3":"de garantía en mano de obra",
+"svc.title":"Lo que pintamos","svc.sub":"Cada trabajo incluye preparación, protección, dos capas y limpieza completa.","svc.from":"Desde",
+"svc.interior":"Paredes y techos interiores","svc.interior.d":"Salas, cuartos, cocinas y pasillos. Movemos y cubrimos los muebles.",
+"svc.exterior":"Fachadas y molduras","svc.exterior.d":"Lavado a presión, raspado, sellado y primer antes de dos capas.",
+"svc.cabinets":"Gabinetes de cocina","svc.cabinets.d":"Desengrasado, lijado y acabado con pistola, liso como de fábrica.",
+"svc.deck":"Decks y cercas","svc.deck.d":"Limpieza y tinte o sellador para madera expuesta al sol y la lluvia.",
+"svc.drywall":"Reparación de drywall","svc.drywall.d":"Hoyos, grietas y manchas de agua reparadas con textura igual.",
+"svc.commercial":"Oficinas y locales","svc.commercial.d":"Trabajamos de noche o fin de semana para que no cierres.",
+"unit.sqft":"/ pie²","unit.piece":"/ pieza","unit.lf":"/ pie lineal",
+"col.title":"Encuentra tu color","col.sub":"Toca un color para verlo en las paredes. Guarda los que te gusten y se envían con tu solicitud.","col.room":"Cuarto","col.house":"Casa","col.save":"Guardar este color","col.saved":"Guardado","col.trim":"Molduras:","col.nopicks":"Aún no guardas colores.",
+"fam.whites":"Blancos","fam.neutrals":"Neutros","fam.blues":"Azules","fam.greens":"Verdes","fam.warm":"Cálidos y tierra","fam.bold":"Intensos y oscuros",
+"trim.white":"Blanco","trim.off":"Hueso","trim.black":"Negro","trim.match":"Igual a la pared",
+"dz.title":"Ideas de diseño","dz.sub":"Cinco formas de usar el color en un cuarto. Elige una y el presupuesto se actualiza.","dz.use":"Usar este estilo","dz.using":"Seleccionado",
+"style.single":"Un color","style.single.d":"Paredes de un color, techo y molduras blancos. Rápido y limpio.",
+"style.accent":"Pared de acento","style.accent.d":"Una pared en un tono más fuerte que le da carácter al cuarto.",
+"style.twotone":"Dos tonos","style.twotone.d":"Dos colores divididos por una moldura o una línea recta.",
+"style.drench":"Todo un color","style.drench.d":"Paredes, molduras y techo del mismo color. Moderno y acogedor.",
+"style.specialty":"Acabado especial","style.specialty.d":"Cal (limewash), estuco veneciano o textura. Aplicado a mano.",
+"est.title":"Presupuesto gratis","est.sub":"El precio es por pie cuadrado de superficie pintada, ajustado según el estilo y la dificultad del trabajo.","est.s1":"Tipo de proyecto","est.s2":"Tamaño","est.s3":"Estilo de pintura","est.s4":"Dificultad","est.s5":"Pintura y capas",
+"type.interior":"Interior","type.interior.d":"Paredes, techos, molduras y puertas","type.exterior":"Exterior","type.exterior.d":"Fachada, molduras, puertas, aleros","type.cabinets":"Gabinetes","type.cabinets.d":"Puertas, gavetas, cajones",
+"est.len":"Largo (pies)","est.wid":"Ancho (pies)","est.hei":"Alto (pies)","est.addroom":"Agregar este cuarto","est.helper":"¿No sabes los pies cuadrados? Escribe las medidas del cuarto y sumamos paredes y techo por ti.",
+"est.area":"Área de paredes (pie²)","est.areaExt":"Área de fachada (pie²)","est.ceil":"Área de techo (pie²)","est.cab":"Puertas + frentes de gaveta","est.trim":"Molduras / zócalo (pies lineales)","est.doors":"Puertas a pintar",
+"diff.easy":"Fácil","diff.easy.d":"Vacío o pocos muebles, paredes en buen estado, altura normal.",
+"diff.medium":"Media","diff.medium.d":"Cuartos amueblados, algunas reparaciones, esquinas difíciles.",
+"diff.hard":"Difícil","diff.hard.d":"Techos de más de 10 pies, escaleras o andamio, muchas reparaciones o detalles.",
+"est.coats":"Capas","est.c1":"1 capa (retoque del mismo color)","est.c2":"2 capas (recomendado)","est.qual":"Línea de pintura","est.std":"Estándar","est.prem":"Premium (lavable, poco olor)","est.primer":"Necesita primer (manchas, drywall nuevo, cambio fuerte de color)",
+"res.tag":"Tu presupuesto","res.sub":"Rango estimado, mano de obra y materiales incluidos","res.note":"El precio final se confirma después de una visita gratis. La mayoría de cotizaciones queda dentro de este rango.",
+"res.surface":"Superficie a pintar","res.gallons":"Pintura necesaria","res.days":"Días de trabajo (cuadrilla de 2)","res.style":"Estilo","res.diff":"Dificultad","res.gal":"gal","res.dayU":"días","res.day1":"día","res.min":"Incluye nuestro mínimo por trabajo",
+"req.title":"Envíenme este presupuesto","req.name":"Nombre completo","req.phone":"Teléfono","req.email":"Correo","req.addr":"Dirección del proyecto","req.date":"Fecha preferida para empezar","req.notes":"¿Algo que debamos saber?","req.colors":"Colores que guardaste","req.send":"Pedir mi cotización","req.ok":"¡Gracias! Recibimos tu solicitud y te llamamos en menos de 48 horas.","req.err":"Escribe tu nombre y un teléfono o correo para poder contactarte.","req.errArea":"Primero agrega el tamaño del trabajo en el paso 2.","req.errSave":"No pudimos guardar tu solicitud. Por favor llámanos.",
+"how.title":"Cómo trabajamos","how.1t":"Presupuesto","how.1":"Rango en línea hoy, cotización por escrito tras una visita gratis.","how.2t":"Preparación","how.2":"Movemos y cubrimos muebles, resanamos, lijamos y encintamos.","how.3t":"Pintura","how.3":"Dos capas con la línea y los colores que elegiste.","how.4t":"Revisión final","how.4":"Revisamos cada pared contigo antes de irnos.",
+"ft.call":"Llama o escribe","ft.email":"Correo","ft.hours":"Lun–Sáb, 7 am – 6 pm","ft.admin":"Acceso del dueño",
+"adm.login":"Panel del dueño","adm.loginsub":"Escribe tu PIN para manejar cotizaciones, trabajos y pagos.","adm.pinerr":"El PIN no coincide. Intenta otra vez.","adm.enter":"Entrar al panel","adm.pinhint":"PIN del prototipo: 1234. Cámbialo en Ajustes.","adm.back":"← Volver al sitio","adm.site":"Ver el sitio","adm.logout":"Bloquear panel",
+"tab.dash":"Resumen","tab.quotes":"Cotizaciones","tab.jobs":"Trabajos","tab.cal":"Calendario","tab.clients":"Clientes","tab.exp":"Materiales y gastos","tab.team":"Equipo y pagos","tab.set":"Ajustes",
+"k.new":"Solicitudes nuevas","k.active":"Trabajos activos","k.billed":"Facturado este mes","k.costs":"Costos este mes","k.profit":"Ganancia de trabajos terminados","k.due":"Por cobrar","k.margin":"margen",
+"d.upcoming":"Próximos 14 días","d.recent":"Últimas solicitudes","d.owed":"Pendiente de pagar al equipo","d.none":"Nada todavía.","d.bycat":"Costos por categoría este mes",
+"st.new":"Nueva","st.contacted":"Contactado","st.quoted":"Cotizado","st.won":"Ganada","st.lost":"Perdida","st.scheduled":"Programado","st.in_progress":"En curso","st.done":"Terminado","st.canceled":"Cancelado","st.paid":"Pagado","st.unpaid":"Sin pagar",
+"c.date":"Fecha","c.client":"Cliente","c.type":"Tipo","c.size":"Tamaño","c.range":"Estimado","c.status":"Estado","c.job":"Trabajo","c.dates":"Fechas","c.crew":"Equipo","c.price":"Precio","c.collected":"Cobrado","c.costs":"Costos","c.profit":"Ganancia","c.phone":"Teléfono","c.email":"Correo","c.address":"Dirección","c.jobs":"Trabajos","c.cat":"Categoría","c.desc":"Descripción","c.gal":"Galones","c.amount":"Monto","c.name":"Nombre","c.role":"Puesto","c.rate":"Pago / hora","c.hours":"Horas","c.paid":"Pagado","c.employee":"Trabajador","c.notes":"Notas","c.start":"Inicio","c.end":"Fin","c.title":"Nombre del trabajo","c.sqft":"Pie²","c.colors":"Colores","c.deposit":"Monto cobrado","c.pref":"Fecha preferida","c.style":"Estilo","c.diff":"Dificultad","c.source":"Origen","c.lang":"Idioma",
+"a.add":"Agregar","a.newjob":"Nuevo trabajo","a.newclient":"Nuevo cliente","a.newexp":"Agregar gasto","a.newemp":"Agregar trabajador","a.newhours":"Registrar horas","a.convert":"Convertir en trabajo","a.view":"Ver","a.edit":"Editar","a.delete":"Borrar","a.save":"Guardar","a.cancel":"Cancelar","a.close":"Cerrar","a.markpaid":"Marcar pagado","a.prev":"← Anterior","a.next":"Siguiente →","a.today":"Hoy","a.sample":"Cargar datos de ejemplo","a.clear":"Borrar todos los datos","a.all":"Todos","a.confirmDel":"¿Borrar esto definitivamente?","a.confirmClear":"Esto borra todas las cotizaciones, trabajos, clientes, gastos y pagos. Escribe BORRAR para confirmar.",
+"cat.paint":"Pintura","cat.supplies":"Materiales","cat.rental":"Alquiler de equipo","cat.fuel":"Gasolina y viajes","cat.other":"Otros",
+"role.lead":"Jefe de cuadrilla","role.painter":"Pintor","role.helper":"Ayudante",
+"set.biz":"Negocio","set.bname":"Nombre del negocio","set.bphone":"Teléfono","set.bemail":"Correo","set.barea":"Zona de servicio (se muestra en el sitio)","set.rates":"Precios que usa la calculadora del sitio","set.rint":"Paredes interiores $/pie²","set.rext":"Exterior $/pie²","set.rceil":"Techos $/pie²","set.rcab":"Gabinetes $/pieza","set.rtrim":"Molduras $/pie lineal","set.rdoor":"Puertas $/puerta","set.rprimer":"Primer $/pie²","set.rmin":"Mínimo por trabajo $","set.mult":"Multiplicadores","set.security":"PIN del panel","set.pin":"PIN nuevo","set.data":"Datos","set.saved":"Ajustes guardados",
+"m.newquote":"Nueva solicitud","m.jobdetail":"Detalle del trabajo","m.saved":"Guardado","m.deleted":"Borrado","m.converted":"Trabajo creado a partir de la cotización","m.sampled":"Datos de ejemplo cargados",
+"mode.db":"Los datos se guardan en línea y los ve quien tenga permiso de edición.","mode.local":"Modo vista previa: los datos se guardan solo en este navegador.",
+"j.breakdown":"Dinero de este trabajo","j.materials":"Materiales y gastos","j.labor":"Mano de obra","j.balance":"Saldo pendiente","j.noexp":"Aún no hay costos registrados.",
+"q.est":"Estimado del sitio","q.fromweb":"Sitio web","q.manual":"Manual","cal.more":"más","team.owed":"Sin pagar","team.week":"Horas esta semana"
+}};
+let lang = 'en';
+{ let stored=null; try{ stored=localStorage.getItem('bl-lang'); }catch(e){} lang = stored || ((navigator.language||'en').toLowerCase().startsWith('es') ? 'es' : 'en'); }
+if(!I18N[lang]) lang='en';
+const t = k => (I18N[lang][k] ?? I18N.en[k] ?? k);
+function applyI18n(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-lang]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.lang===lang));
+}
+document.addEventListener('click',e=>{
+  const b = e.target.closest('[data-lang]'); if(!b) return;
+  lang = b.dataset.lang; try{localStorage.setItem('bl-lang',lang)}catch(_){}
+  applyI18n(); renderPublic(); if(document.body.classList.contains('is-admin')) renderAdmin();
+});
+
+/* =========================================================
+   Helpers
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const money = n => (Number(n)||0).toLocaleString(lang==='es'?'es-US':'en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+const num = n => (Number(n)||0).toLocaleString(lang==='es'?'es-US':'en-US');
+const iso = d => { const x=new Date(d); x.setMinutes(x.getMinutes()-x.getTimezoneOffset()); return x.toISOString().slice(0,10); };
+const today = () => iso(new Date());
+const addDays = (s,n) => { const d=new Date(s+'T12:00:00'); d.setDate(d.getDate()+n); return iso(d); };
+const fmtDate = s => s ? new Date(s+'T12:00:00').toLocaleDateString(lang==='es'?'es-US':'en-US',{month:'short',day:'numeric'}) : '—';
+const monthKey = s => (s||'').slice(0,7);
+function toast(msg){ const el=$('#toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2200); }
+
+/* =========================================================
+   Data store: claude db when available, else this browser
+   ========================================================= */
+const COLS = ['quotes','clients','jobs','expenses','employees','labor'];
+const DEFAULT_CONFIG = {
+  name:'Brushline Painting', phone:'(555) 010-2233', email:'hello@example.com', area:'',
+  pin:'1234',
+  rates:{interior:1.75, exterior:2.25, ceiling:1.25, cabinet:95, trim:1.6, door:85, primer:0.45, min:350},
+  styleMult:{single:1, accent:1.12, twotone:1.2, drench:1.25, specialty:1.6},
+  diffMult:{easy:1, medium:1.2, hard:1.45}
+};
+const S = {quotes:[],clients:[],jobs:[],expenses:[],employees:[],labor:[], config:structuredClone(DEFAULT_CONFIG)};
+let DB = null, mode = 'local';
+const LS_KEY='brushline-proto-v1';
+function loadLocal(){ try{ const raw=localStorage.getItem(LS_KEY); if(raw){ const d=JSON.parse(raw); COLS.forEach(c=>S[c]=d[c]||[]); S.config=mergeCfg(d.config); return true; } }catch(e){} return false; }
+function saveLocal(){ if(mode!=='local') return; try{ const d={config:S.config}; COLS.forEach(c=>d[c]=S[c]); localStorage.setItem(LS_KEY,JSON.stringify(d)); }catch(e){} }
+function mergeCfg(c){ c=c||{}; return {...DEFAULT_CONFIG,...c, rates:{...DEFAULT_CONFIG.rates,...(c.rates||{})}, styleMult:{...DEFAULT_CONFIG.styleMult,...(c.styleMult||{})}, diffMult:{...DEFAULT_CONFIG.diffMult,...(c.diffMult||{})}}; }
+async function save(col,obj){
+  if(!obj.id) obj.id = uid();
+  const i = S[col].findIndex(x=>x.id===obj.id);
+  if(i>=0) S[col][i]=obj; else S[col].push(obj);
+  if(mode==='db'){ const {id,...body}=obj; await DB.collection(col).doc(id).set(JSON.parse(JSON.stringify(body))); }
+  else saveLocal();
+  return obj;
+}
+async function removeDoc(col,id){
+  S[col]=S[col].filter(x=>x.id!==id);
+  if(mode==='db') await DB.collection(col).doc(id).delete(); else saveLocal();
+}
+async function saveConfig(){
+  if(mode==='db') await DB.doc('config/main').set(JSON.parse(JSON.stringify(S.config))); else saveLocal();
+}
+let rerenderQueued=false;
+function queueRender(){ if(rerenderQueued) return; rerenderQueued=true; requestAnimationFrame(()=>{ rerenderQueued=false; applyBiz(); if(document.body.classList.contains('is-admin') && unlocked) renderAdmin(); else calc(); }); }
+async function connectDb(){
+  if(!window.claude || typeof window.claude.use!=='function') return;
+  let db=null; try{ db = await window.claude.use('db'); }catch(e){ db=null; }
+  if(!db) return;
+  DB=db; mode='db';
+  COLS.forEach(c=>{ S[c]=[]; });
+  COLS.forEach(c=>{
+    db.collection(c).onSnapshot(snap=>{ S[c]=snap.docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data()})); queueRender(); }, ()=>{});
+  });
+  db.doc('config/main').onSnapshot(snap=>{ S.config = mergeCfg(snap.exists ? snap.data() : null); if(!document.body.classList.contains('is-admin')) renderPublic(); queueRender(); }, ()=>{});
+  queueRender();
+}
+
+/* =========================================================
+   Catalog data
+   ========================================================= */
+const FAMILIES = {
+  whites:[['Chalk','#F2F0EA'],['Linen','#EDE6D8'],['Cotton','#F7F6F2'],['Ivory Lace','#F1E9D4'],['Cloud','#E7EBEB'],['Porcelain','#F3EFE9']],
+  neutrals:[['Pebble','#CFC8BC'],['Driftwood','#B5AA98'],['Greige','#C2BAAC'],['Stone','#A29D92'],['Mushroom','#9A8E7F'],['Fog','#D2D5D0']],
+  blues:[['Harbor','#3E5C76'],['Denim','#5A7FA6'],['Sky Wash','#B9CFE0'],['Navy Night','#263752'],['Slate Blue','#6C8299'],['Coastal','#8FB3C4']],
+  greens:[['Sage','#A7B39A'],['Olive Grove','#6E7454'],['Eucalyptus','#8FA89A'],['Forest','#2F4A3A'],['Mint Cream','#D8E6D6'],['Moss','#78805E']],
+  warm:[['Sand Dune','#D8C3A5'],['Clay','#A86F55'],['Honey','#D9A645'],['Blush','#E3C2B8'],['Rust','#8E4B32'],['Adobe','#C08466']],
+  bold:[['Charcoal','#3B3F44'],['Black Iron','#24272B'],['Emerald','#1F5E4E'],['Burgundy','#6B2B34'],['Ochre','#C08A2B'],['Deep Teal','#1E5961']]
+};
+const TRIMS = {white:'#F8F8F5', off:'#EEE8DC', black:'#26282B', match:null};
+const STYLES = ['single','accent','twotone','drench','specialty'];
+const DIFFS = ['easy','medium','hard'];
+const TYPES = ['interior','exterior','cabinets'];
+
+/* =========================================================
+   Illustrations
+   ========================================================= */
+function shade(hex,amt){ const n=parseInt(hex.slice(1),16); let r=n>>16,g=(n>>8)&255,b=n&255; const f=v=>Math.max(0,Math.min(255,Math.round(amt<0? v*(1+amt) : v+(255-v)*amt))); return '#'+[f(r),f(g),f(b)].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+function roomSVG({wall='#C2BAAC', side=null, ceil='#F7F6F2', trim='#F8F8F5', lower=null, texture=false, id='r'}={}){
+  const sideC = side || shade(wall,-0.12);
+  const lowerBack = lower ? `<rect x="80" y="150" width="240" height="66" fill="${lower}"/><rect x="80" y="146" width="240" height="5" fill="${trim}"/>` : '';
+  const lowerSide = lower ? `<polygon points="0,180 80,150 80,216 0,260" fill="${shade(lower,-0.12)}"/><polygon points="400,180 320,150 320,216 400,260" fill="${shade(lower,-0.12)}"/>` : '';
+  const tex = texture ? `<defs><pattern id="tx${id}" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M0 20 Q10 10 20 20 T40 20" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="6"/><path d="M0 35 Q12 28 24 35 T40 32" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="5"/></pattern></defs><rect x="80" y="40" width="240" height="176" fill="url(#tx${id})"/>` : '';
+  return `<svg viewBox="0 0 400 260" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <polygon points="0,0 400,0 320,40 80,40" fill="${ceil}"/><polygon points="0,0 80,40 80,40 0,0" fill="${ceil}"/>
+  <polygon points="0,0 80,40 80,216 0,260" fill="${sideC}"/>
+  <polygon points="400,0 320,40 320,216 400,260" fill="${sideC}"/>
+  <rect x="80" y="40" width="240" height="176" fill="${wall}"/>${tex}
+  ${lowerBack}${lowerSide}
+  <polygon points="0,260 80,216 320,216 400,260" fill="#B98E62"/>
+  <path d="M40 260 L100 216 M120 260 L150 216 M200 260 L200 216 M280 260 L250 216 M360 260 L300 216" stroke="#A47B52" stroke-width="2"/>
+  <rect x="80" y="210" width="240" height="7" fill="${trim}"/>
+  <polygon points="0,254 80,210 80,217 0,261" fill="${shade(trim,-0.1)}"/><polygon points="400,254 320,210 320,217 400,261" fill="${shade(trim,-0.1)}"/>
+  <rect x="80" y="38" width="240" height="5" fill="${trim}"/>
+  <rect x="226" y="70" width="70" height="80" fill="${trim}"/><rect x="232" y="76" width="58" height="68" fill="#CFE3F1"/><path d="M261 76 V144 M232 110 H290" stroke="${trim}" stroke-width="4"/>
+  <rect x="106" y="78" width="74" height="52" fill="#fff" stroke="${shade(trim,-0.25)}" stroke-width="3"/><path d="M112 124 L136 100 L150 112 L162 96 L176 124 Z" fill="#9DB7A5"/><circle cx="124" cy="92" r="6" fill="#E8C66A"/>
+  <rect x="100" y="168" width="110" height="34" rx="8" fill="#5C6670"/><rect x="104" y="150" width="102" height="26" rx="8" fill="#6B757F"/><rect x="96" y="160" width="14" height="40" rx="6" fill="#525B64"/><rect x="200" y="160" width="14" height="40" rx="6" fill="#525B64"/>
+  <rect x="246" y="178" width="8" height="38" fill="#7A5A3E"/><ellipse cx="250" cy="170" rx="18" ry="20" fill="#5E8C61"/>
+  </svg>`;
+}
+function houseSVG({body='#C2BAAC', trim='#F8F8F5'}={}){
+  const bodyS = shade(body,-0.1);
+  return `<svg viewBox="0 0 400 260" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="260" fill="#DCEBF5"/><circle cx="340" cy="46" r="20" fill="#F6D776"/>
+  <rect y="216" width="400" height="44" fill="#8DB273"/>
+  <polygon points="60,110 200,40 340,110" fill="#4A4F57"/>
+  <rect x="80" y="108" width="240" height="110" fill="${body}"/>
+  <path d="M80 126 H320 M80 144 H320 M80 162 H320 M80 180 H320 M80 198 H320" stroke="${bodyS}" stroke-width="2"/>
+  <rect x="76" y="106" width="6" height="112" fill="${trim}"/><rect x="318" y="106" width="6" height="112" fill="${trim}"/>
+  <polygon points="56,112 200,38 344,112 336,114 200,46 64,114" fill="${trim}"/>
+  <rect x="100" y="132" width="56" height="46" fill="${trim}"/><rect x="105" y="137" width="46" height="36" fill="#BFD7EA"/><path d="M128 137 V173" stroke="${trim}" stroke-width="3"/>
+  <rect x="244" y="132" width="56" height="46" fill="${trim}"/><rect x="249" y="137" width="46" height="36" fill="#BFD7EA"/><path d="M272 137 V173" stroke="${trim}" stroke-width="3"/>
+  <rect x="180" y="148" width="40" height="70" fill="${trim}"/><rect x="185" y="153" width="30" height="65" fill="${shade(body,-0.45)}"/><circle cx="209" cy="188" r="2.5" fill="#E2C46A"/>
+  <rect x="170" y="216" width="60" height="6" fill="#B9B4AA"/>
+  <ellipse cx="62" cy="214" rx="26" ry="16" fill="#5E8C61"/><ellipse cx="340" cy="214" rx="26" ry="16" fill="#5E8C61"/>
+  </svg>`;
+}
+
+/* =========================================================
+   Public site rendering
+   ========================================================= */
+const svcIcons = {
+  interior:'<path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/>',
+  exterior:'<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>',
+  cabinets:'<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M12 3v18M9 11v2M15 11v2"/>',
+  deck:'<path d="M3 9h18M3 15h18M6 5v16M12 5v16M18 5v16"/>',
+  drywall:'<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 10l2 2-2 2M15 9v6"/>',
+  commercial:'<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 7h2M14 7h2M8 11h2M14 11h2M10 21v-4h4v4"/>'
+};
+let pv = {fam:'neutrals', color:FAMILIES.neutrals[2], trim:'white', mode:'room'};
+let picks = []; try{ picks = JSON.parse(localStorage.getItem('bl-picks')||'[]'); }catch(e){}
+const est = {type:'interior', style:'single', diff:'medium'};
+
+function applyBiz(){
+  const c=S.config;
+  document.querySelectorAll('.js-bizname').forEach(e=>e.textContent=c.name);
+  document.querySelectorAll('.js-bizphone').forEach(e=>e.textContent=c.phone);
+  document.querySelectorAll('.js-bizemail').forEach(e=>e.textContent=c.email);
+  document.querySelectorAll('.js-bizarea').forEach(e=>e.textContent=c.area || '');
+  document.title = c.name;
+}
+function renderPublic(){
+  applyBiz();
+  $('#heroArt').innerHTML = roomSVG({wall:'#6C8299', ceil:'#F7F6F2', trim:'#F8F8F5', id:'h'});
+  const R=S.config.rates;
+  const svcs=[['interior',R.interior,'unit.sqft'],['exterior',R.exterior,'unit.sqft'],['cabinets',R.cabinet,'unit.piece'],['deck',R.exterior*0.8,'unit.sqft'],['drywall',null],['commercial',null]];
+  $('#svcList').innerHTML = svcs.map(([k,p,u])=>`<article class="svc"><div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svcIcons[k]}</svg></div><h3>${esc(t('svc.'+k))}</h3><p>${esc(t('svc.'+k+'.d'))}</p>${p?`<span class="from num">${t('svc.from')} ${'$'+(+p).toFixed(2).replace(/\.00$/,'')} ${t(u)}</span>`:''}</article>`).join('');
+  // colors
+  $('#famTabs').innerHTML = Object.keys(FAMILIES).map(f=>`<button type="button" class="chip" data-fam="${f}" aria-pressed="${f===pv.fam}">${esc(t('fam.'+f))}</button>`).join('');
+  $('#swatches').innerHTML = FAMILIES[pv.fam].map(([n,h])=>`<button type="button" class="sw" data-color="${h}" data-name="${esc(n)}" aria-pressed="${pv.color[1]===h}"><div class="c" style="background:${h}"></div><div class="n"><span>${esc(n)}</span><small>${h}</small></div></button>`).join('');
+  $('#trimDots').innerHTML = Object.entries(TRIMS).map(([k,h])=>`<button type="button" class="dot" data-trim="${k}" aria-pressed="${pv.trim===k}" title="${esc(t('trim.'+k))}" aria-label="${esc(t('trim.'+k))}" style="background:${h||`linear-gradient(135deg,${pv.color[1]} 50%,${shade(pv.color[1],-0.15)} 50%)`}"></button>`).join('');
+  drawPreview();
+  renderPicks();
+  // designs
+  const dzColors = {single:{wall:'#C2BAAC'},accent:{wall:'#263752',side:'#E7EBEB'},twotone:{wall:'#D8E6D6',lower:'#2F4A3A'},drench:{wall:'#A7B39A',ceil:'#A7B39A',trim:'#97A38A',side:shade('#A7B39A',-0.1)},specialty:{wall:'#C9B9A5',texture:true}};
+  $('#dzList').innerHTML = STYLES.map(s=>`<article class="dz">${roomSVG({...dzColors[s],id:'dz'+s})}<div class="b"><h3>${esc(t('style.'+s))}</h3><p>${esc(t('style.'+s+'.d'))}</p><button type="button" class="btn small ${est.style===s?'primary':''}" data-usestyle="${s}">${esc(t(est.style===s?'dz.using':'dz.use'))}</button></div></article>`).join('');
+  // estimator options
+  $('#optType').innerHTML = TYPES.map(k=>opt('type',k,est.type)).join('');
+  $('#optStyle').innerHTML = STYLES.map(k=>opt('style',k,est.style, ` · ×${S.config.styleMult[k]}`)).join('');
+  $('#optDiff').innerHTML = DIFFS.map(k=>opt('diff',k,est.diff, ` · ×${S.config.diffMult[k]}`)).join('');
+  calc();
+}
+function opt(group,k,cur,extra=''){
+  return `<div class="opt"><input type="radio" name="${group}" id="o-${group}-${k}" value="${k}" ${cur===k?'checked':''}><label for="o-${group}-${k}"><b>${esc(t(group+'.'+k))}<span class="num" style="font-weight:600;color:var(--muted)">${extra}</span></b><span>${esc(t(group+'.'+k+'.d'))}</span></label></div>`;
+}
+function drawPreview(){
+  const h=pv.color[1]; const tr=TRIMS[pv.trim]||shade(h,-0.06);
+  $('#pvArt').innerHTML = pv.mode==='room' ? roomSVG({wall:h, trim:tr, id:'pv', ceil: pv.trim==='match'? shade(h,0.15):'#F7F6F2'}) : houseSVG({body:h, trim:tr});
+  $('#pvName').textContent = `${pv.color[0]} · ${h}`;
+  document.querySelectorAll('[data-pv]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.pv===pv.mode));
+  const saved = picks.some(p=>p.hex===h);
+  $('#saveColor').textContent = t(saved?'col.saved':'col.save');
+  $('#saveColor').classList.toggle('primary',!saved);
+}
+function renderPicks(){
+  const html = picks.length ? picks.map(p=>`<span class="pick"><i style="background:${p.hex}"></i>${esc(p.name)}<button type="button" data-unpick="${p.hex}" aria-label="Remove ${esc(p.name)}">×</button></span>`).join('') : `<span class="muted" style="font-size:14px">${esc(t('col.nopicks'))}</span>`;
+  $('#picks').innerHTML = html; $('#picks2').innerHTML = html;
+}
+document.addEventListener('click',e=>{
+  const f=e.target.closest('[data-fam]'); if(f){ pv.fam=f.dataset.fam; renderPublicColors(); return; }
+  const sw=e.target.closest('[data-color]'); if(sw){ pv.color=[sw.dataset.name,sw.dataset.color]; renderPublicColors(); return; }
+  const tr=e.target.closest('[data-trim]'); if(tr){ pv.trim=tr.dataset.trim; renderPublicColors(); return; }
+  const m=e.target.closest('[data-pv]'); if(m){ pv.mode=m.dataset.pv; drawPreview(); return; }
+  const up=e.target.closest('[data-unpick]'); if(up){ picks=picks.filter(p=>p.hex!==up.dataset.unpick); persistPicks(); drawPreview(); return; }
+  const us=e.target.closest('[data-usestyle]'); if(us){ est.style=us.dataset.usestyle; renderPublic(); $('#estimate').scrollIntoView(); return; }
+});
+function renderPublicColors(){
+  document.querySelectorAll('#famTabs [data-fam]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.fam===pv.fam));
+  $('#swatches').innerHTML = FAMILIES[pv.fam].map(([n,h])=>`<button type="button" class="sw" data-color="${h}" data-name="${esc(n)}" aria-pressed="${pv.color[1]===h}"><div class="c" style="background:${h}"></div><div class="n"><span>${esc(n)}</span><small>${h}</small></div></button>`).join('');
+  document.querySelectorAll('#trimDots [data-trim]').forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.trim===pv.trim); if(b.dataset.trim==='match') b.style.background=`linear-gradient(135deg,${pv.color[1]} 50%,${shade(pv.color[1],-0.15)} 50%)`; });
+  drawPreview();
+}
+$('#saveColor').addEventListener('click',()=>{
+  const h=pv.color[1];
+  if(picks.some(p=>p.hex===h)) picks=picks.filter(p=>p.hex!==h);
+  else { picks.push({name:pv.color[0],hex:h}); if(picks.length>6) picks.shift(); }
+  persistPicks(); drawPreview();
+});
+function persistPicks(){ try{localStorage.setItem('bl-picks',JSON.stringify(picks))}catch(e){} renderPicks(); }
+
+/* ---------- Estimator ---------- */
+function readEst(){
+  return {
+    type:est.type, style:est.style, diff:est.diff,
+    area:+$('#eArea').value||0, ceil: est.type==='interior' ? (+$('#eCeil').value||0) : 0,
+    cab: est.type==='cabinets' ? (+$('#eCab').value||0) : 0,
+    trim:+$('#eTrim').value||0, doors:+$('#eDoors').value||0,
+    coats:+$('#eCoats').value||2, qual:$('#eQual').value, primer:$('#ePrimer').checked
+  };
+}
+function estimate(p, cfg=S.config){
+  const R=cfg.rates;
+  const surface = p.type==='cabinets' ? 0 : p.area + p.ceil;
+  let base = 0;
+  if(p.type==='interior') base += p.area*R.interior + p.ceil*R.ceiling;
+  if(p.type==='exterior') base += p.area*R.exterior;
+  if(p.type==='cabinets') base += p.cab*R.cabinet;
+  base += p.trim*R.trim + p.doors*R.door;
+  if(p.primer) base += surface*R.primer + (p.type==='cabinets'? p.cab*R.cabinet*0.15 : 0);
+  const coatM = p.coats===1 ? 0.78 : 1;
+  const qualM = p.qual==='prem' ? 1.12 : 1;
+  const mult = (cfg.styleMult[p.style]||1) * (cfg.diffMult[p.diff]||1) * coatM * qualM;
+  let total = base*mult;
+  const hitMin = total>0 && total < R.min;
+  if(total>0) total = Math.max(total, R.min);
+  const r50 = v=>Math.round(v/50)*50;
+  const low = r50(total*0.92), high = Math.max(r50(total*1.12), low+50);
+  const paintSurface = surface + p.trim*0.5 + p.doors*40 + p.cab*8;
+  const gallons = paintSurface ? Math.ceil(paintSurface*p.coats/350 + (p.primer? paintSurface/300 : 0)) : 0;
+  const days = paintSurface ? Math.max(1, Math.ceil(paintSurface*p.coats*(cfg.diffMult[p.diff]||1)/700)) : 0;
+  return {total, low:total?low:0, high:total?high:0, surface, gallons, days, hitMin};
+}
+function calc(){
+  if(!$('#eArea')) return;
+  const p=readEst();
+  $('#fCeil').hidden = p.type!=='interior';
+  $('#fCab').hidden = p.type!=='cabinets';
+  $('#fArea').hidden = p.type==='cabinets';
+  $('#roomHelper').hidden = p.type!=='interior';
+  $('#fArea label').textContent = t(p.type==='exterior'?'est.areaExt':'est.area');
+  const r = estimate(p);
+  $('#rRange').textContent = r.total ? `${money(r.low)} – ${money(r.high)}` : '$0';
+  $('#rDl').innerHTML = `
+    <dt>${t('res.surface')}</dt><dd class="num">${p.type==='cabinets'? num(p.cab)+' pcs' : num(r.surface)+' sq ft'}</dd>
+    <dt>${t('res.gallons')}</dt><dd class="num">≈ ${r.gallons} ${t('res.gal')}</dd>
+    <dt>${t('res.days')}</dt><dd class="num">${r.days} ${t(r.days===1?'res.day1':'res.dayU')}</dd>
+    <dt>${t('res.style')}</dt><dd>${esc(t('style.'+p.style))}</dd>
+    <dt>${t('res.diff')}</dt><dd>${esc(t('diff.'+p.diff))}</dd>
+    ${r.hitMin?`<dt style="grid-column:1/-1;color:var(--warn)">${t('res.min')} (${money(S.config.rates.min)})</dt>`:''}`;
+}
+document.addEventListener('change',e=>{
+  if(e.target.name==='type'){ est.type=e.target.value; calc(); }
+  if(e.target.name==='style'){ est.style=e.target.value; renderPublic(); }
+  if(e.target.name==='diff'){ est.diff=e.target.value; calc(); }
+});
+$('#estForm').addEventListener('input',calc);
+$('#estForm').addEventListener('submit',e=>e.preventDefault());
+$('#hAdd').addEventListener('click',()=>{
+  const L=+$('#hL').value||0, W=+$('#hW').value||0, H=+$('#hH').value||0;
+  if(!L||!W||!H) return;
+  const walls = Math.round(2*(L+W)*H*0.88); // ~12% off for doors & windows
+  $('#eArea').value = (+$('#eArea').value||0) + walls;
+  $('#eCeil').value = (+$('#eCeil').value||0) + Math.round(L*W);
+  $('#eTrim').value = (+$('#eTrim').value||0) + Math.round(2*(L+W));
+  if(H>10 && est.diff!=='hard'){ est.diff='hard'; $('#o-diff-hard').checked=true; }
+  calc(); toast(`+${num(walls)} sq ft`);
+});
+$('#reqForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const err=$('#qErr'); err.hidden=true;
+  const name=$('#qName').value.trim(), phone=$('#qPhone').value.trim(), email=$('#qEmail').value.trim();
+  const p=readEst(); const r=estimate(p);
+  if(!name || (!phone && !email)){ err.textContent=t('req.err'); err.hidden=false; return; }
+  if(!r.total){ err.textContent=t('req.errArea'); err.hidden=false; return; }
+  const q = {createdAt:new Date().toISOString(), name, phone, email, address:$('#qAddr').value.trim(), preferredDate:$('#qDate').value, notes:$('#qNotes').value.trim(),
+    ...p, low:r.low, high:r.high, gallons:r.gallons, days:r.days, colors:picks.map(x=>`${x.name} ${x.hex}`), status:'new', source:'web', lang};
+  try{ await save('quotes',q); }catch(_){ err.textContent=t('req.errSave'); err.hidden=false; return; }
+  $('#qOk').hidden=false; e.target.querySelector('button[type=submit]').disabled=true;
+  setTimeout(()=>{ $('#qOk').hidden=true; e.target.reset(); e.target.querySelector('button[type=submit]').disabled=false; },6000);
+});
+
+/* =========================================================
+   Admin
+   ========================================================= */
+let unlocked=false; try{ unlocked = sessionStorage.getItem('bl-unlocked')==='1'; }catch(e){}
+let tab='dash'; let jobFilter='all'; let calMonth = today().slice(0,7);
+const TABS=[['dash','<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>'],['quotes','<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>'],['jobs','<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'],['cal','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'],['clients','<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11a3 3 0 1 0 0-6M22 21c0-3-2-5-5-5"/>'],['exp','<path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'],['team','<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>'],['set','<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>']];
+
+function route(){
+  const h=location.hash.replace('#','');
+  if(h==='admin'){ document.body.classList.add('is-admin'); showAdmin(); window.scrollTo(0,0); }
+  else { document.body.classList.remove('is-admin'); }
+}
+window.addEventListener('hashchange',route);
+function showAdmin(){
+  $('#loginView').hidden = unlocked; $('#rail').hidden=!unlocked; $('#main').hidden=!unlocked;
+  if(unlocked) renderAdmin(); else setTimeout(()=>$('#pin').focus(),50);
+}
+$('#loginForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  if($('#pin').value === String(S.config.pin||'1234')){ unlocked=true; try{sessionStorage.setItem('bl-unlocked','1')}catch(_){} $('#pin').value=''; $('#pinErr').hidden=true; showAdmin(); }
+  else $('#pinErr').hidden=false;
+});
+$('#logout').addEventListener('click',()=>{ unlocked=false; try{sessionStorage.removeItem('bl-unlocked')}catch(_){} showAdmin(); });
+
+/* --- derived numbers --- */
+const clientName = id => (S.clients.find(c=>c.id===id)||{}).name || '—';
+const empName = id => (S.employees.find(c=>c.id===id)||{}).name || '—';
+const jobName = id => (S.jobs.find(c=>c.id===id)||{}).title || '—';
+const jobExp = id => S.expenses.filter(x=>x.jobId===id).reduce((a,x)=>a+(+x.amount||0),0);
+const laborAmt = l => (+l.hours||0)*(+l.rate||0);
+const jobLab = id => S.labor.filter(x=>x.jobId===id).reduce((a,x)=>a+laborAmt(x),0);
+const jobCost = id => jobExp(id)+jobLab(id);
+const pill = (st) => `<span class="pill p-${st}">${esc(t('st.'+st))}</span>`;
+
+function renderAdmin(){
+  if(!unlocked) return;
+  applyI18n(); applyBiz();
+  const newCount = S.quotes.filter(q=>q.status==='new').length;
+  $('#tabs').innerHTML = TABS.map(([k,ic])=>`<button type="button" class="tab" data-tab="${k}" aria-current="${tab===k}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ic}</svg>${esc(t('tab.'+k))}${k==='quotes'&&newCount?`<span class="badge num">${newCount}</span>`:''}</button>`).join('');
+  const views={dash:vDash,quotes:vQuotes,jobs:vJobs,cal:vCal,clients:vClients,exp:vExp,team:vTeam,set:vSet};
+  $('#main').innerHTML = views[tab]();
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-tab]'); if(b){ tab=b.dataset.tab; renderAdmin(); window.scrollTo(0,0); }
+});
+const head = (title, actions='') => `<div class="main-head"><h2>${esc(title)}</h2><div class="toolbar" style="margin:0">${actions}</div></div>`;
+const isEmpty = () => COLS.every(c=>S[c].length===0);
+const emptyBox = (msg) => `<div class="empty">${esc(msg||t('d.none'))}${isEmpty()?`<br><button type="button" class="btn primary" data-act="sample">${esc(t('a.sample'))}</button>`:''}</div>`;
+
+function vDash(){
+  const mk = today().slice(0,7);
+  const active = S.jobs.filter(j=>j.status==='scheduled'||j.status==='in_progress');
+  const doneMonth = S.jobs.filter(j=>j.status==='done' && monthKey(j.endDate)===mk);
+  const billed = doneMonth.reduce((a,j)=>a+(+j.price||0),0);
+  const expM = S.expenses.filter(x=>monthKey(x.date)===mk).reduce((a,x)=>a+(+x.amount||0),0);
+  const labM = S.labor.filter(x=>monthKey(x.date)===mk).reduce((a,x)=>a+laborAmt(x),0);
+  const costs = expM+labM, profit = doneMonth.reduce((a,j)=>a+(+j.price||0)-jobCost(j.id),0);
+  const due = S.jobs.filter(j=>j.status!=='canceled').reduce((a,j)=>a+Math.max(0,(+j.price||0)-(+j.paid||0)),0);
+  const owed = S.labor.filter(l=>!l.paid).reduce((a,l)=>a+laborAmt(l),0);
+  const tiles = [
+    [t('k.new'), S.quotes.filter(q=>q.status==='new').length, ''],
+    [t('k.active'), active.length, ''],
+    [t('k.billed'), money(billed), doneMonth.length+' ✓'],
+    [t('k.costs'), money(costs), ''],
+    [t('k.profit'), money(profit), billed? Math.round(profit/billed*100)+'% '+t('k.margin') : ''],
+    [t('k.due'), money(due), '']
+  ].map(([l,v,s])=>`<div class="tile"><span>${esc(l)}</span><b class="num">${v}</b><small>${esc(s)}</small></div>`).join('');
+  const t0=today(), t14=addDays(t0,14);
+  const up = S.jobs.filter(j=>j.status!=='canceled' && j.status!=='done' && (j.startDate||'')<=t14 && (j.endDate||j.startDate||'')>=t0).sort((a,b)=>(a.startDate||'').localeCompare(b.startDate||''));
+  const recent = [...S.quotes].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).slice(0,5);
+  const catM={}; S.expenses.filter(x=>monthKey(x.date)===mk).forEach(x=>catM[x.category]=(catM[x.category]||0)+(+x.amount||0)); if(labM) catM.__labor=labM;
+  const maxC=Math.max(1,...Object.values(catM));
+  const owedBy={}; S.labor.filter(l=>!l.paid).forEach(l=>owedBy[l.employeeId]=(owedBy[l.employeeId]||0)+laborAmt(l));
+  return head(t('tab.dash')) + `<p class="mode-note ${mode==='db'?'ok':''}" style="margin-bottom:16px">${esc(t(mode==='db'?'mode.db':'mode.local'))}</p>
+  <div class="tiles">${tiles}</div>
+  <div class="cols2">
+    <div class="card"><h3>${esc(t('d.upcoming'))}</h3><div class="body">${up.length? up.map(j=>`<div class="list-row"><div><b>${esc(j.title)}</b><small>${esc(clientName(j.clientId))} · ${fmtDate(j.startDate)} – ${fmtDate(j.endDate)} · ${esc((j.crew||[]).map(empName).join(', ')||'—')}</small></div>${pill(j.status)}</div>`).join('') : emptyBox()}</div></div>
+    <div class="card"><h3>${esc(t('d.recent'))}<button type="button" class="btn small" data-tab="quotes">${esc(t('tab.quotes'))} →</button></h3><div class="body">${recent.length? recent.map(q=>`<div class="list-row"><div><b>${esc(q.name)}</b><small>${esc(t('type.'+q.type))} · ${num(q.type==='cabinets'?q.cab:(+q.area||0)+(+q.ceil||0))} ${q.type==='cabinets'?'pcs':'sq ft'} · <span class="num">${money(q.low)}–${money(q.high)}</span></small></div>${pill(q.status)}</div>`).join('') : emptyBox()}</div></div>
+    <div class="card"><h3>${esc(t('d.bycat'))}</h3><div class="body">${Object.keys(catM).length? Object.entries(catM).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:14px"><span>${esc(k==='__labor'?t('j.labor'):t('cat.'+k))}</span><b class="num">${money(v)}</b></div><div class="bar"><i style="width:${v/maxC*100}%"></i></div></div>`).join('') : emptyBox()}</div></div>
+    <div class="card"><h3>${esc(t('d.owed'))}<b class="num">${money(owed)}</b></h3><div class="body">${Object.keys(owedBy).length? Object.entries(owedBy).map(([id,v])=>`<div class="list-row"><span>${esc(empName(id))}</span><b class="num">${money(v)}</b></div>`).join('') : emptyBox()}</div></div>
+  </div>`;
+}
+
+function vQuotes(){
+  const rows=[...S.quotes].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  return head(t('tab.quotes'), `<button type="button" class="btn primary" data-act="newquote">+ ${esc(t('a.add'))}</button>`) +
+  `<div class="card"><div class="tbl-wrap">${rows.length?`<table><thead><tr><th>${t('c.date')}</th><th>${t('c.client')}</th><th>${t('c.type')}</th><th class="r">${t('c.size')}</th><th class="r">${t('c.range')}</th><th>${t('c.pref')}</th><th>${t('c.status')}</th><th></th></tr></thead><tbody>${rows.map(q=>`<tr class="click" data-act="viewquote" data-id="${q.id}">
+    <td class="num">${fmtDate((q.createdAt||'').slice(0,10))}</td><td><b>${esc(q.name)}</b><br><small class="muted">${esc(q.phone||q.email||'')}</small></td><td>${esc(t('type.'+q.type))}<br><small class="muted">${esc(t('style.'+q.style))} · ${esc(t('diff.'+q.diff))}</small></td>
+    <td class="r num">${q.type==='cabinets'?num(q.cab)+' pcs':num((+q.area||0)+(+q.ceil||0))}</td><td class="r num">${money(q.low)}–${money(q.high)}</td><td class="num">${fmtDate(q.preferredDate)}</td><td>${pill(q.status)}</td>
+    <td class="r" style="white-space:nowrap">${q.status!=='won'&&q.status!=='lost'?`<button type="button" class="btn small primary" data-act="convert" data-id="${q.id}">${esc(t('a.convert'))}</button>`:''}</td></tr>`).join('')}</tbody></table>`:emptyBox()}</div></div>`;
+}
+
+function vJobs(){
+  const sts=['all','scheduled','in_progress','done','canceled'];
+  let rows=[...S.jobs].sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||''));
+  if(jobFilter!=='all') rows=rows.filter(j=>j.status===jobFilter);
+  return head(t('tab.jobs'), `<button type="button" class="btn primary" data-act="newjob">+ ${esc(t('a.newjob'))}</button>`) +
+  `<div class="toolbar">${sts.map(s=>`<button type="button" class="chip" data-jf="${s}" aria-pressed="${jobFilter===s}">${esc(s==='all'?t('a.all'):t('st.'+s))} <span class="num muted">${s==='all'?S.jobs.length:S.jobs.filter(j=>j.status===s).length}</span></button>`).join('')}</div>
+  <div class="card"><div class="tbl-wrap">${rows.length?`<table><thead><tr><th>${t('c.job')}</th><th>${t('c.dates')}</th><th>${t('c.crew')}</th><th class="r">${t('c.price')}</th><th class="r">${t('c.collected')}</th><th class="r">${t('c.costs')}</th><th class="r">${t('c.profit')}</th><th>${t('c.status')}</th></tr></thead><tbody>${rows.map(j=>{const c=jobCost(j.id), pr=(+j.price||0)-c; return `<tr class="click" data-act="viewjob" data-id="${j.id}">
+    <td><b>${esc(j.title)}</b><br><small class="muted">${esc(clientName(j.clientId))}</small></td><td class="num">${fmtDate(j.startDate)} – ${fmtDate(j.endDate)}</td><td>${esc((j.crew||[]).map(empName).join(', ')||'—')}</td>
+    <td class="r num">${money(j.price)}</td><td class="r num">${money(j.paid)}</td><td class="r num">${money(c)}</td><td class="r num" style="color:${pr<0?'var(--bad)':'var(--ok)'};font-weight:700">${money(pr)}</td><td>${pill(j.status)}</td></tr>`}).join('')}</tbody></table>`:emptyBox()}</div></div>`;
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-jf]'); if(b){ jobFilter=b.dataset.jf; renderAdmin(); } });
+
+const JOB_COLORS = {scheduled:['var(--info-soft)','var(--info)'],in_progress:['var(--warn-soft)','var(--warn)'],done:['var(--ok-soft)','var(--ok)'],canceled:['var(--bad-soft)','var(--bad)']};
+function vCal(){
+  const [y,m]=calMonth.split('-').map(Number);
+  const first=new Date(y,m-1,1); const startDow=first.getDay();
+  const start = iso(new Date(y,m-1,1-startDow));
+  const label = first.toLocaleDateString(lang==='es'?'es-US':'en-US',{month:'long',year:'numeric'});
+  const dows=[...Array(7)].map((_,i)=>new Date(2024,0,7+i).toLocaleDateString(lang==='es'?'es-US':'en-US',{weekday:'short'}));
+  let cells='';
+  for(let i=0;i<42;i++){
+    const d=addDays(start,i); const out=d.slice(0,7)!==calMonth;
+    const evs=S.jobs.filter(j=>j.status!=='canceled' && j.startDate && d>=j.startDate && d<=(j.endDate||j.startDate));
+    cells+=`<div class="d ${out?'out':''} ${d===today()?'today':''}"><span class="dn num">${+d.slice(8)}</span>${evs.slice(0,3).map(j=>`<button type="button" class="ev" data-act="viewjob" data-id="${j.id}" style="background:${JOB_COLORS[j.status]?.[0]};color:${JOB_COLORS[j.status]?.[1]}">${esc(j.title)}</button>`).join('')}${evs.length>3?`<small class="muted">+${evs.length-3} ${t('cal.more')}</small>`:''}</div>`;
+  }
+  return head(label.charAt(0).toUpperCase()+label.slice(1), `<button type="button" class="btn small" data-cal="-1">${t('a.prev')}</button><button type="button" class="btn small" data-cal="0">${t('a.today')}</button><button type="button" class="btn small" data-cal="1">${t('a.next')}</button><button type="button" class="btn small primary" data-act="newjob">+ ${esc(t('a.newjob'))}</button>`)
+   + `<div class="cal">${dows.map(d=>`<div class="dh">${esc(d)}</div>`).join('')}${cells}</div>`;
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-cal]'); if(!b) return; const v=+b.dataset.cal; if(v===0) calMonth=today().slice(0,7); else { const [y,m]=calMonth.split('-').map(Number); const d=new Date(y,m-1+v,1); calMonth=iso(d).slice(0,7);} renderAdmin(); });
+
+function vClients(){
+  const rows=[...S.clients].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  return head(t('tab.clients'), `<button type="button" class="btn primary" data-act="newclient">+ ${esc(t('a.newclient'))}</button>`) +
+  `<div class="card"><div class="tbl-wrap">${rows.length?`<table><thead><tr><th>${t('c.name')}</th><th>${t('c.phone')}</th><th>${t('c.email')}</th><th>${t('c.address')}</th><th class="r">${t('c.jobs')}</th><th class="r">${t('c.price')}</th></tr></thead><tbody>${rows.map(c=>{const js=S.jobs.filter(j=>j.clientId===c.id);return `<tr class="click" data-act="editclient" data-id="${c.id}"><td><b>${esc(c.name)}</b></td><td class="num">${esc(c.phone)}</td><td>${esc(c.email)}</td><td>${esc(c.address)}</td><td class="r num">${js.length}</td><td class="r num">${money(js.reduce((a,j)=>a+(+j.price||0),0))}</td></tr>`}).join('')}</tbody></table>`:emptyBox()}</div></div>`;
+}
+
+function vExp(){
+  const rows=[...S.expenses].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const mk=today().slice(0,7);
+  const mTotal=rows.filter(x=>monthKey(x.date)===mk).reduce((a,x)=>a+(+x.amount||0),0);
+  const gal=rows.filter(x=>monthKey(x.date)===mk).reduce((a,x)=>a+(+x.gallons||0),0);
+  return head(t('tab.exp'), `<button type="button" class="btn primary" data-act="newexp">+ ${esc(t('a.newexp'))}</button>`) +
+  `<div class="tiles" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="tile"><span>${esc(t('k.costs'))}</span><b class="num">${money(mTotal)}</b><small>${esc(t('j.materials'))}</small></div><div class="tile"><span>${esc(t('cat.paint'))}</span><b class="num">${num(gal)} gal</b><small>${esc(t('k.costs'))}</small></div><div class="tile"><span>${esc(t('j.labor'))}</span><b class="num">${money(S.labor.filter(x=>monthKey(x.date)===mk).reduce((a,x)=>a+laborAmt(x),0))}</b><small>${esc(t('tab.team'))}</small></div></div>
+  <div class="card"><div class="tbl-wrap">${rows.length?`<table><thead><tr><th>${t('c.date')}</th><th>${t('c.cat')}</th><th>${t('c.desc')}</th><th>${t('c.job')}</th><th class="r">${t('c.gal')}</th><th class="r">${t('c.amount')}</th></tr></thead><tbody>${rows.map(x=>`<tr class="click" data-act="editexp" data-id="${x.id}"><td class="num">${fmtDate(x.date)}</td><td>${esc(t('cat.'+x.category))}</td><td>${esc(x.description)}</td><td>${x.jobId?esc(jobName(x.jobId)):'<span class="muted">—</span>'}</td><td class="r num">${x.gallons?num(x.gallons):''}</td><td class="r num"><b>${money(x.amount)}</b></td></tr>`).join('')}</tbody></table>`:emptyBox()}</div></div>`;
+}
+
+function vTeam(){
+  const wkStart = addDays(today(), -((new Date().getDay()+6)%7));
+  const emps=S.employees;
+  const labs=[...S.labor].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  return head(t('tab.team'), `<button type="button" class="btn" data-act="newemp">+ ${esc(t('a.newemp'))}</button><button type="button" class="btn primary" data-act="newlabor">+ ${esc(t('a.newhours'))}</button>`) +
+  `<div class="card" style="margin-bottom:16px"><div class="tbl-wrap">${emps.length?`<table><thead><tr><th>${t('c.name')}</th><th>${t('c.role')}</th><th>${t('c.phone')}</th><th class="r">${t('c.rate')}</th><th class="r">${t('team.week')}</th><th class="r">${t('team.owed')}</th><th></th></tr></thead><tbody>${emps.map(em=>{const mine=S.labor.filter(l=>l.employeeId===em.id); const wk=mine.filter(l=>(l.date||'')>=wkStart).reduce((a,l)=>a+(+l.hours||0),0); const ow=mine.filter(l=>!l.paid).reduce((a,l)=>a+laborAmt(l),0); return `<tr><td><b>${esc(em.name)}</b></td><td>${esc(t('role.'+em.role))}</td><td class="num">${esc(em.phone)}</td><td class="r num">${money(em.rate)}</td><td class="r num">${num(wk)}</td><td class="r num"><b>${money(ow)}</b></td><td class="r" style="white-space:nowrap">${ow?`<button type="button" class="btn small primary" data-act="payemp" data-id="${em.id}">${esc(t('a.markpaid'))}</button> `:''}<button type="button" class="btn small" data-act="editemp" data-id="${em.id}">${esc(t('a.edit'))}</button></td></tr>`}).join('')}</tbody></table>`:emptyBox()}</div></div>
+  <div class="card"><h3>${esc(t('a.newhours'))}</h3><div class="tbl-wrap">${labs.length?`<table><thead><tr><th>${t('c.date')}</th><th>${t('c.employee')}</th><th>${t('c.job')}</th><th class="r">${t('c.hours')}</th><th class="r">${t('c.rate')}</th><th class="r">${t('c.amount')}</th><th>${t('c.status')}</th></tr></thead><tbody>${labs.map(l=>`<tr class="click" data-act="editlabor" data-id="${l.id}"><td class="num">${fmtDate(l.date)}</td><td>${esc(empName(l.employeeId))}</td><td>${esc(jobName(l.jobId))}</td><td class="r num">${num(l.hours)}</td><td class="r num">${money(l.rate)}</td><td class="r num"><b>${money(laborAmt(l))}</b></td><td>${pill(l.paid?'paid':'unpaid')}</td></tr>`).join('')}</tbody></table>`:emptyBox()}</div></div>`;
+}
+
+function vSet(){
+  const c=S.config, R=c.rates;
+  const f=(id,label,val,type='text',step)=>`<div class="field"><label for="${id}">${esc(label)}</label><input id="${id}" type="${type}" ${step?`step="${step}"`:''} value="${esc(val)}"></div>`;
+  return head(t('tab.set')) + `<form id="setForm" class="panel" style="max-width:820px">
+    <div class="step"><h3>${esc(t('set.biz'))}</h3><div class="grid2">${f('sName',t('set.bname'),c.name)}${f('sPhone',t('set.bphone'),c.phone,'tel')}${f('sEmail',t('set.bemail'),c.email,'email')}${f('sArea',t('set.barea'),c.area)}</div></div>
+    <div class="step"><h3>${esc(t('set.rates'))}</h3><div class="grid3">${f('rInt',t('set.rint'),R.interior,'number','0.05')}${f('rExt',t('set.rext'),R.exterior,'number','0.05')}${f('rCeil',t('set.rceil'),R.ceiling,'number','0.05')}${f('rCab',t('set.rcab'),R.cabinet,'number','1')}${f('rTrim',t('set.rtrim'),R.trim,'number','0.05')}${f('rDoor',t('set.rdoor'),R.door,'number','1')}${f('rPrimer',t('set.rprimer'),R.primer,'number','0.05')}${f('rMin',t('set.rmin'),R.min,'number','10')}</div></div>
+    <div class="step"><h3>${esc(t('set.mult'))}</h3><div class="grid3">${STYLES.map(s=>f('sm-'+s,t('style.'+s),c.styleMult[s],'number','0.01')).join('')}${DIFFS.map(s=>f('dm-'+s,t('diff.'+s),c.diffMult[s],'number','0.01')).join('')}</div></div>
+    <div class="step"><h3>${esc(t('set.security'))}</h3><div class="grid2">${f('sPin',t('set.pin'),'','password')}</div></div>
+    <div style="margin-top:20px"><button class="btn primary" type="submit">${esc(t('a.save'))}</button></div>
+  </form>
+  <div class="panel" style="max-width:820px;margin-top:16px"><h3 style="margin-bottom:10px">${esc(t('set.data'))}</h3><p class="mode-note ${mode==='db'?'ok':''}" style="margin-bottom:12px">${esc(t(mode==='db'?'mode.db':'mode.local'))}</p><div class="toolbar"><button type="button" class="btn" data-act="sample">${esc(t('a.sample'))}</button><button type="button" class="btn danger" data-act="clear">${esc(t('a.clear'))}</button></div></div>`;
+}
+document.addEventListener('submit',async e=>{
+  if(e.target.id!=='setForm') return; e.preventDefault();
+  const g=id=>document.getElementById(id).value, n=id=>+document.getElementById(id).value||0;
+  const c=S.config;
+  c.name=g('sName').trim()||c.name; c.phone=g('sPhone').trim(); c.email=g('sEmail').trim(); c.area=g('sArea').trim();
+  c.rates={interior:n('rInt'),exterior:n('rExt'),ceiling:n('rCeil'),cabinet:n('rCab'),trim:n('rTrim'),door:n('rDoor'),primer:n('rPrimer'),min:n('rMin')};
+  STYLES.forEach(s=>c.styleMult[s]=n('sm-'+s)||1); DIFFS.forEach(s=>c.diffMult[s]=n('dm-'+s)||1);
+  if(g('sPin').trim()) c.pin=g('sPin').trim();
+  await saveConfig(); applyBiz(); renderPublic(); toast(t('set.saved')); renderAdmin();
+});
+
+/* --- generic modal form --- */
+let modalSave=null;
+function openModal(title, bodyHtml, buttons){
+  $('#modalTitle').textContent=title; $('#modalBody').innerHTML=bodyHtml; $('#modalFoot').innerHTML=buttons;
+  $('#modalBg').classList.add('open'); setTimeout(()=>{ const f=$('#modalBody').querySelector('input,select,textarea'); if(f) f.focus(); },30);
+}
+function closeModal(){ $('#modalBg').classList.remove('open'); modalSave=null; }
+$('#modalX').addEventListener('click',closeModal);
+$('#modalBg').addEventListener('click',e=>{ if(e.target.id==='modalBg') closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && $('#modalBg').classList.contains('open')) closeModal(); });
+
+function fieldHtml(f,v){
+  const id='mf-'+f.k; const val=v??f.def??'';
+  let input;
+  if(f.type==='select') input=`<select id="${id}">${f.options.map(([ov,ol])=>`<option value="${esc(ov)}" ${String(ov)===String(val)?'selected':''}>${esc(ol)}</option>`).join('')}</select>`;
+  else if(f.type==='textarea') input=`<textarea id="${id}">${esc(val)}</textarea>`;
+  else if(f.type==='multi') input=`<div class="multi" id="${id}">${f.options.map(([ov,ol])=>`<label><input type="checkbox" value="${esc(ov)}" ${(val||[]).includes(ov)?'checked':''}>${esc(ol)}</label>`).join('')||'<span class="muted">—</span>'}</div>`;
+  else if(f.type==='check') input=`<label class="check"><input type="checkbox" id="${id}" ${val?'checked':''}>${esc(f.label)}</label>`;
+  else input=`<input id="${id}" type="${f.type||'text'}" ${f.step?`step="${f.step}"`:''} value="${esc(val)}">`;
+  return f.type==='check' ? `<div ${f.half?'':'style="grid-column:1/-1"'}>${input}</div>` : `<div class="field" ${f.half?'':'style="grid-column:1/-1"'}><label for="${id}">${esc(f.label)}</label>${input}</div>`;
+}
+function readFields(fields){
+  const o={};
+  fields.forEach(f=>{ const el=document.getElementById('mf-'+f.k); if(!el) return;
+    if(f.type==='multi') o[f.k]=[...el.querySelectorAll('input:checked')].map(i=>i.value);
+    else if(f.type==='check') o[f.k]=el.checked;
+    else if(f.type==='number') o[f.k]= el.value===''? 0 : +el.value;
+    else o[f.k]=el.value.trim();
+  });
+  return o;
+}
+function formModal(title, fields, obj, onSave, onDelete){
+  openModal(title, `<div class="grid2">${fields.map(f=>fieldHtml(f,obj?.[f.k])).join('')}</div><p class="err" id="mErr" hidden></p>`,
+    `${onDelete?`<button type="button" class="btn danger" id="mDel" style="margin-right:auto">${esc(t('a.delete'))}</button>`:''}<button type="button" class="btn" id="mCancel">${esc(t('a.cancel'))}</button><button type="button" class="btn primary" id="mSave">${esc(t('a.save'))}</button>`);
+  $('#mCancel').onclick=closeModal;
+  $('#mSave').onclick=async()=>{ const data=readFields(fields); const req=fields.find(f=>f.req && !data[f.k]); if(req){ $('#mErr').textContent=`${req.label} ✱`; $('#mErr').hidden=false; return; } $('#mSave').disabled=true; try{ await onSave({...(obj||{}),...data}); closeModal(); toast(t('m.saved')); renderAdmin(); }catch(err){ $('#mErr').textContent=String(err.message||err); $('#mErr').hidden=false; $('#mSave').disabled=false; } };
+  if(onDelete) $('#mDel').onclick=()=>confirmDelete(onDelete);
+}
+function confirmDelete(fn){
+  $('#modalFoot').innerHTML=`<span style="margin-right:auto;font-weight:600">${esc(t('a.confirmDel'))}</span><button type="button" class="btn" id="cdNo">${esc(t('a.cancel'))}</button><button type="button" class="btn primary" id="cdYes" style="background:var(--bad);border-color:var(--bad)">${esc(t('a.delete'))}</button>`;
+  $('#cdNo').onclick=closeModal; $('#cdYes').onclick=async()=>{ await fn(); closeModal(); toast(t('m.deleted')); renderAdmin(); };
+}
+
+const F = {
+  client:()=>[{k:'name',label:t('c.name'),req:1},{k:'phone',label:t('c.phone'),half:1,type:'tel'},{k:'email',label:t('c.email'),half:1,type:'email'},{k:'address',label:t('c.address')},{k:'notes',label:t('c.notes'),type:'textarea'}],
+  job:()=>[{k:'title',label:t('c.title'),req:1},{k:'clientId',label:t('c.client'),type:'select',options:[['',`—`],...S.clients.map(c=>[c.id,c.name])],half:1},{k:'status',label:t('c.status'),type:'select',options:['scheduled','in_progress','done','canceled'].map(s=>[s,t('st.'+s)]),half:1,def:'scheduled'},
+    {k:'address',label:t('c.address')},{k:'type',label:t('c.type'),type:'select',options:TYPES.map(s=>[s,t('type.'+s)]),half:1},{k:'sqft',label:t('c.sqft'),type:'number',half:1},
+    {k:'startDate',label:t('c.start'),type:'date',half:1,def:today()},{k:'endDate',label:t('c.end'),type:'date',half:1,def:today()},{k:'price',label:t('c.price'),type:'number',half:1},{k:'paid',label:t('c.deposit'),type:'number',half:1},
+    {k:'crew',label:t('c.crew'),type:'multi',options:S.employees.map(e=>[e.id,e.name])},{k:'colors',label:t('c.colors')},{k:'notes',label:t('c.notes'),type:'textarea'}],
+  exp:()=>[{k:'date',label:t('c.date'),type:'date',half:1,def:today()},{k:'category',label:t('c.cat'),type:'select',options:['paint','supplies','rental','fuel','other'].map(s=>[s,t('cat.'+s)]),half:1},{k:'description',label:t('c.desc'),req:1},{k:'jobId',label:t('c.job'),type:'select',options:[['','—'],...S.jobs.filter(j=>j.status!=='canceled').map(j=>[j.id,j.title])]},{k:'gallons',label:t('c.gal'),type:'number',half:1,step:'0.5'},{k:'amount',label:t('c.amount')+' $',type:'number',half:1,req:1,step:'0.01'}],
+  emp:()=>[{k:'name',label:t('c.name'),req:1},{k:'role',label:t('c.role'),type:'select',options:['lead','painter','helper'].map(s=>[s,t('role.'+s)]),half:1},{k:'rate',label:t('c.rate')+' $',type:'number',half:1,step:'0.5'},{k:'phone',label:t('c.phone'),type:'tel'}],
+  labor:()=>[{k:'date',label:t('c.date'),type:'date',half:1,def:today()},{k:'employeeId',label:t('c.employee'),type:'select',options:S.employees.map(e=>[e.id,e.name]),half:1,req:1},{k:'jobId',label:t('c.job'),type:'select',options:[['','—'],...S.jobs.filter(j=>j.status!=='canceled').map(j=>[j.id,j.title])]},{k:'hours',label:t('c.hours'),type:'number',half:1,step:'0.5',req:1},{k:'rate',label:t('c.rate')+' $ ('+(lang==='es'?'vacío = tarifa del trabajador':'blank = crew member rate')+')',type:'number',half:1,step:'0.5'},{k:'paid',label:t('c.paid'),type:'check'}],
+  quote:()=>[{k:'name',label:t('c.name'),req:1},{k:'phone',label:t('c.phone'),half:1},{k:'email',label:t('c.email'),half:1},{k:'address',label:t('c.address')},{k:'type',label:t('c.type'),type:'select',options:TYPES.map(s=>[s,t('type.'+s)]),half:1},{k:'area',label:t('c.sqft'),type:'number',half:1},{k:'style',label:t('c.style'),type:'select',options:STYLES.map(s=>[s,t('style.'+s)]),half:1},{k:'diff',label:t('c.diff'),type:'select',options:DIFFS.map(s=>[s,t('diff.'+s)]),half:1},{k:'preferredDate',label:t('c.pref'),type:'date',half:1},{k:'status',label:t('c.status'),type:'select',options:['new','contacted','quoted','won','lost'].map(s=>[s,t('st.'+s)]),half:1,def:'new'},{k:'notes',label:t('c.notes'),type:'textarea'}]
+};
+
+function viewQuote(q){
+  const st=['new','contacted','quoted','won','lost'];
+  openModal(q.name, `<dl class="kv">
+    <dt>${t('c.phone')}</dt><dd class="num">${esc(q.phone||'—')}</dd><dt>${t('c.email')}</dt><dd>${esc(q.email||'—')}</dd><dt>${t('c.address')}</dt><dd>${esc(q.address||'—')}</dd>
+    <dt>${t('c.type')}</dt><dd>${esc(t('type.'+q.type))}</dd><dt>${t('c.size')}</dt><dd class="num">${q.type==='cabinets'?num(q.cab)+' pcs':`${num(q.area)} sq ft ${q.type==='interior'&&q.ceil?'+ '+num(q.ceil)+' ceil':''}`}${q.trim?` · ${num(q.trim)} lf trim`:''}${q.doors?` · ${num(q.doors)} doors`:''}</dd>
+    <dt>${t('c.style')}</dt><dd>${esc(t('style.'+q.style))} · ${esc(t('diff.'+q.diff))} · ${q.coats||2}× ${q.qual==='prem'?t('est.prem'):t('est.std')}${q.primer?' · primer':''}</dd>
+    <dt>${t('q.est')}</dt><dd class="num">${money(q.low)} – ${money(q.high)} · ≈${q.gallons||0} gal · ${q.days||0} ${t('res.dayU')}</dd>
+    <dt>${t('c.pref')}</dt><dd>${fmtDate(q.preferredDate)}</dd><dt>${t('c.colors')}</dt><dd>${(q.colors||[]).length? q.colors.map(c=>{const hex=(c.match(/#[0-9A-Fa-f]{6}/)||[''])[0]; return `<span class="pick" style="margin:0 4px 4px 0"><i style="background:${hex}"></i>${esc(c)}</span>`}).join('') : '—'}</dd>
+    <dt>${t('c.notes')}</dt><dd style="font-weight:400">${esc(q.notes||'—')}</dd><dt>${t('c.source')}</dt><dd>${esc(q.source==='web'?t('q.fromweb'):t('q.manual'))}${q.lang?` · ${q.lang.toUpperCase()}`:''}</dd>
+  </dl><div class="field"><label for="qStatus">${t('c.status')}</label><select id="qStatus">${st.map(s=>`<option value="${s}" ${q.status===s?'selected':''}>${esc(t('st.'+s))}</option>`).join('')}</select></div>`,
+  `<button type="button" class="btn danger" id="qDel" style="margin-right:auto">${esc(t('a.delete'))}</button><button type="button" class="btn" id="qEdit">${esc(t('a.edit'))}</button>${q.status!=='won'&&q.status!=='lost'?`<button type="button" class="btn primary" id="qConv">${esc(t('a.convert'))}</button>`:''}<button type="button" class="btn" id="qClose">${esc(t('a.close'))}</button>`);
+  $('#qStatus').onchange=async e=>{ q.status=e.target.value; await save('quotes',q); toast(t('m.saved')); renderAdmin(); };
+  $('#qClose').onclick=closeModal;
+  $('#qEdit').onclick=()=>formModal(t('a.edit'),F.quote(),q,async o=>{ const r=estimate({type:o.type,area:+o.area||0,ceil:+o.ceil||0,cab:+o.cab||0,trim:+o.trim||0,doors:+o.doors||0,coats:+o.coats||2,qual:o.qual||'std',primer:!!o.primer,style:o.style,diff:o.diff}); await save('quotes',{...o,low:r.low,high:r.high,gallons:r.gallons,days:r.days}); },()=>removeDoc('quotes',q.id));
+  $('#qDel').onclick=()=>confirmDelete(()=>removeDoc('quotes',q.id));
+  if($('#qConv')) $('#qConv').onclick=()=>convertQuote(q);
+}
+async function convertQuote(q){
+  let client = S.clients.find(c=>(q.phone && c.phone===q.phone) || (q.email && c.email===q.email));
+  if(!client) client = await save('clients',{name:q.name,phone:q.phone||'',email:q.email||'',address:q.address||'',notes:''});
+  const start=q.preferredDate||addDays(today(),7);
+  const job = await save('jobs',{title:`${t('type.'+q.type)} · ${q.name.split(' ')[0]}`, clientId:client.id, status:'scheduled', address:q.address||'', type:q.type, sqft:(+q.area||0)+(+q.ceil||0),
+    startDate:start, endDate:addDays(start,Math.max(0,(q.days||1)-1)), price:Math.round(((+q.low||0)+(+q.high||0))/2), paid:0, crew:[], colors:(q.colors||[]).join(', '), notes:q.notes||'', quoteId:q.id});
+  q.status='won'; q.jobId=job.id; await save('quotes',q);
+  closeModal(); toast(t('m.converted')); tab='jobs'; renderAdmin(); viewJob(job);
+}
+function viewJob(j){
+  const ex=S.expenses.filter(x=>x.jobId===j.id), lb=S.labor.filter(x=>x.jobId===j.id);
+  const e=jobExp(j.id), l=jobLab(j.id), pr=(+j.price||0)-e-l;
+  openModal(j.title, `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${pill(j.status)}<span class="muted">${esc(clientName(j.clientId))} · ${fmtDate(j.startDate)} – ${fmtDate(j.endDate)}</span></div>
+  <dl class="kv"><dt>${t('c.address')}</dt><dd>${esc(j.address||'—')}</dd><dt>${t('c.crew')}</dt><dd>${esc((j.crew||[]).map(empName).join(', ')||'—')}</dd><dt>${t('c.colors')}</dt><dd>${esc(j.colors||'—')}</dd><dt>${t('c.notes')}</dt><dd style="font-weight:400">${esc(j.notes||'—')}</dd></dl>
+  <div class="card"><h3>${esc(t('j.breakdown'))}</h3><div class="body"><dl class="kv" style="grid-template-columns:1fr auto">
+    <dt>${t('c.price')}</dt><dd class="num" style="text-align:right">${money(j.price)}</dd>
+    <dt>− ${t('j.materials')}</dt><dd class="num" style="text-align:right">${money(e)}</dd>
+    <dt>− ${t('j.labor')}</dt><dd class="num" style="text-align:right">${money(l)}</dd>
+    <dt><b>${t('c.profit')}</b></dt><dd class="num" style="text-align:right;color:${pr<0?'var(--bad)':'var(--ok)'}">${money(pr)} ${j.price?`(${Math.round(pr/j.price*100)}%)`:''}</dd>
+    <dt>${t('c.collected')}</dt><dd class="num" style="text-align:right">${money(j.paid)}</dd>
+    <dt>${t('j.balance')}</dt><dd class="num" style="text-align:right">${money(Math.max(0,(+j.price||0)-(+j.paid||0)))}</dd></dl>
+    ${(ex.length||lb.length)? `<div style="margin-top:12px;font-size:14px">${ex.map(x=>`<div class="list-row"><span>${fmtDate(x.date)} · ${esc(t('cat.'+x.category))} · ${esc(x.description)}</span><b class="num">${money(x.amount)}</b></div>`).join('')}${lb.map(x=>`<div class="list-row"><span>${fmtDate(x.date)} · ${esc(empName(x.employeeId))} · ${num(x.hours)} h</span><b class="num">${money(laborAmt(x))}</b></div>`).join('')}</div>` : `<p class="muted" style="margin-top:10px;font-size:14px">${esc(t('j.noexp'))}</p>`}
+  </div></div>`,
+  `<button type="button" class="btn" id="jExp">+ ${esc(t('a.newexp'))}</button><button type="button" class="btn" id="jLab">+ ${esc(t('a.newhours'))}</button><button type="button" class="btn primary" id="jEdit">${esc(t('a.edit'))}</button>`);
+  $('#jEdit').onclick=()=>formModal(t('a.edit'),F.job(),j,o=>save('jobs',o),()=>removeDoc('jobs',j.id));
+  $('#jExp').onclick=()=>formModal(t('a.newexp'),F.exp(),{jobId:j.id,date:today(),category:'paint'},o=>save('expenses',o));
+  $('#jLab').onclick=()=>formModal(t('a.newhours'),F.labor(),{jobId:j.id,date:today(),employeeId:(j.crew||[])[0]||S.employees[0]?.id},o=>saveLabor(o));
+}
+function saveLabor(o){ if(!o.rate){ const em=S.employees.find(e=>e.id===o.employeeId); o.rate=em?+em.rate:0; } return save('labor',o); }
+
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  const id=b.dataset.id, act=b.dataset.act;
+  if(act==='convert'){ e.stopPropagation(); const q=S.quotes.find(x=>x.id===id); if(q) convertQuote(q); return; }
+  if(act==='viewquote'){ const q=S.quotes.find(x=>x.id===id); if(q) viewQuote(q); }
+  if(act==='newquote') formModal(t('m.newquote'),F.quote(),{status:'new',type:'interior',style:'single',diff:'medium'},async o=>{ const r=estimate({...o,area:+o.area||0,ceil:0,cab:0,trim:0,doors:0,coats:2,qual:'std',primer:false}); await save('quotes',{...o,createdAt:new Date().toISOString(),source:'manual',ceil:0,cab:0,trim:0,doors:0,coats:2,qual:'std',low:r.low,high:r.high,gallons:r.gallons,days:r.days,colors:[]}); });
+  if(act==='newjob') formModal(t('a.newjob'),F.job(),{status:'scheduled',type:'interior',crew:[]},o=>save('jobs',o));
+  if(act==='viewjob'){ const j=S.jobs.find(x=>x.id===id); if(j) viewJob(j); }
+  if(act==='newclient') formModal(t('a.newclient'),F.client(),null,o=>save('clients',o));
+  if(act==='editclient'){ const c=S.clients.find(x=>x.id===id); formModal(c.name,F.client(),c,o=>save('clients',o),()=>removeDoc('clients',c.id)); }
+  if(act==='newexp') formModal(t('a.newexp'),F.exp(),{category:'paint'},o=>save('expenses',o));
+  if(act==='editexp'){ const x=S.expenses.find(y=>y.id===id); formModal(t('a.edit'),F.exp(),x,o=>save('expenses',o),()=>removeDoc('expenses',x.id)); }
+  if(act==='newemp') formModal(t('a.newemp'),F.emp(),{role:'painter',rate:22},o=>save('employees',o));
+  if(act==='editemp'){ const x=S.employees.find(y=>y.id===id); formModal(x.name,F.emp(),x,o=>save('employees',o),()=>removeDoc('employees',x.id)); }
+  if(act==='newlabor') formModal(t('a.newhours'),F.labor(),{employeeId:S.employees[0]?.id},o=>saveLabor(o));
+  if(act==='editlabor'){ const x=S.labor.find(y=>y.id===id); formModal(t('a.edit'),F.labor(),x,o=>saveLabor(o),()=>removeDoc('labor',x.id)); }
+  if(act==='payemp'){ for(const l of S.labor.filter(l=>l.employeeId===id && !l.paid)){ await save('labor',{...l,paid:true}); } toast(t('m.saved')); renderAdmin(); }
+  if(act==='sample'){ b.disabled=true; await loadSample(); toast(t('m.sampled')); renderAdmin(); }
+  if(act==='clear'){ openModal(t('a.clear'),`<p>${esc(t('a.confirmClear'))}</p><div class="field"><input id="clrTxt" autocomplete="off"></div>`,`<button type="button" class="btn" id="clrNo">${esc(t('a.cancel'))}</button><button type="button" class="btn primary" id="clrYes" style="background:var(--bad);border-color:var(--bad)">${esc(t('a.clear'))}</button>`);
+    $('#clrNo').onclick=closeModal; $('#clrYes').onclick=async()=>{ const v=$('#clrTxt').value.trim().toUpperCase(); if(v!=='DELETE'&&v!=='BORRAR') return; for(const c of COLS){ for(const x of [...S[c]]) await removeDoc(c,x.id); } closeModal(); toast(t('m.deleted')); renderAdmin(); }; }
+});
+
+/* --- sample data (clearly fictional) --- */
+async function loadSample(){
+  const d0=today(); const D=n=>addDays(d0,n);
+  const emps=[{id:'e1',name:'Carlos M.',role:'lead',rate:28,phone:'(555) 010-4411'},{id:'e2',name:'José R.',role:'painter',rate:23,phone:'(555) 010-4412'},{id:'e3',name:'Andrés L.',role:'helper',rate:18,phone:'(555) 010-4413'}];
+  const cls=[{id:'c1',name:'Sarah Thompson',phone:'(555) 010-7781',email:'sarah.t@example.com',address:'412 Oak Ridge Dr',notes:'Has a dog, gate code 2210'},{id:'c2',name:'Miller Family',phone:'(555) 010-7782',email:'millers@example.com',address:'88 Lakeview Ct',notes:''},{id:'c3',name:'Downtown Dental',phone:'(555) 010-7783',email:'office@example.com',address:'1500 Main St, Suite 4',notes:'Work after 6 pm only'},{id:'c4',name:'Rosa Hernández',phone:'(555) 010-7784',email:'rosa.h@example.com',address:'27 Pine St',notes:'Prefiere español'}];
+  const jobs=[
+    {id:'j1',title:'Living + dining repaint',clientId:'c1',status:'done',address:'412 Oak Ridge Dr',type:'interior',sqft:980,startDate:D(-12),endDate:D(-10),price:3150,paid:3150,crew:['e1','e2'],colors:'Greige #C2BAAC, trim White',notes:''},
+    {id:'j2',title:'Exterior full house',clientId:'c2',status:'in_progress',address:'88 Lakeview Ct',type:'exterior',sqft:2400,startDate:D(-2),endDate:D(3),price:9800,paid:4900,crew:['e1','e2','e3'],colors:'Harbor #3E5C76, trim White',notes:'Pressure wash done day 1'},
+    {id:'j3',title:'Office night repaint',clientId:'c3',status:'scheduled',address:'1500 Main St, Suite 4',type:'interior',sqft:1600,startDate:D(5),endDate:D(7),price:4600,paid:1000,crew:['e2','e3'],colors:'Cloud #E7EBEB',notes:'After 6 pm'},
+    {id:'j4',title:'Kitchen cabinets',clientId:'c4',status:'scheduled',address:'27 Pine St',type:'cabinets',sqft:0,startDate:D(10),endDate:D(13),price:3400,paid:0,crew:['e1'],colors:'Forest #2F4A3A',notes:'28 pieces'}
+  ];
+  const exps=[
+    {id:'x1',date:D(-12),category:'paint',description:'Premium interior eggshell, 8 gal',jobId:'j1',gallons:8,amount:432},
+    {id:'x2',date:D(-12),category:'supplies',description:'Tape, plastic, rollers',jobId:'j1',gallons:0,amount:96},
+    {id:'x3',date:D(-3),category:'paint',description:'Exterior satin, 16 gal + primer 5 gal',jobId:'j2',gallons:21,amount:1290},
+    {id:'x4',date:D(-2),category:'rental',description:'Pressure washer + 2 ladders (week)',jobId:'j2',gallons:0,amount:340},
+    {id:'x5',date:D(-1),category:'fuel',description:'Gas, work truck',jobId:'',gallons:0,amount:85}
+  ];
+  const labs=[
+    {id:'l1',date:D(-12),employeeId:'e1',jobId:'j1',hours:9,rate:28,paid:true},{id:'l2',date:D(-12),employeeId:'e2',jobId:'j1',hours:9,rate:23,paid:true},
+    {id:'l3',date:D(-11),employeeId:'e1',jobId:'j1',hours:8,rate:28,paid:true},{id:'l4',date:D(-11),employeeId:'e2',jobId:'j1',hours:8,rate:23,paid:true},
+    {id:'l5',date:D(-2),employeeId:'e1',jobId:'j2',hours:9,rate:28,paid:false},{id:'l6',date:D(-2),employeeId:'e2',jobId:'j2',hours:9,rate:23,paid:false},{id:'l7',date:D(-2),employeeId:'e3',jobId:'j2',hours:9,rate:18,paid:false},
+    {id:'l8',date:D(-1),employeeId:'e1',jobId:'j2',hours:8,rate:28,paid:false},{id:'l9',date:D(-1),employeeId:'e2',jobId:'j2',hours:8,rate:23,paid:false},{id:'l10',date:D(-1),employeeId:'e3',jobId:'j2',hours:8,rate:18,paid:false}
+  ];
+  const mkQ=(o)=>{ const r=estimate(o); return {...o,low:r.low,high:r.high,gallons:r.gallons,days:r.days}; };
+  const qs=[
+    mkQ({id:'q1',createdAt:new Date(Date.now()-36e5*5).toISOString(),name:'Kevin Park',phone:'(555) 010-2291',email:'kpark@example.com',address:'19 Birch Ln',preferredDate:D(14),notes:'Two bedrooms and hallway',type:'interior',style:'accent',diff:'medium',area:1100,ceil:340,cab:0,trim:180,doors:4,coats:2,qual:'prem',primer:false,colors:['Navy Night #263752','Cloud #E7EBEB'],status:'new',source:'web',lang:'en'}),
+    mkQ({id:'q2',createdAt:new Date(Date.now()-36e5*30).toISOString(),name:'María Gómez',phone:'(555) 010-2292',email:'',address:'5 Cedar Ave',preferredDate:D(20),notes:'Fachada y cerca',type:'exterior',style:'single',diff:'hard',area:1900,ceil:0,cab:0,trim:260,doors:2,coats:2,qual:'std',primer:true,colors:['Sage #A7B39A'],status:'contacted',source:'web',lang:'es'}),
+    mkQ({id:'q3',createdAt:new Date(Date.now()-36e5*80).toISOString(),name:'Linda Brooks',phone:'',email:'lbrooks@example.com',address:'301 Elm St',preferredDate:D(9),notes:'',type:'interior',style:'drench',diff:'easy',area:420,ceil:150,cab:0,trim:50,doors:1,coats:2,qual:'prem',primer:false,colors:['Olive Grove #6E7454'],status:'quoted',source:'web',lang:'en'})
+  ];
+  for(const x of emps) await save('employees',x);
+  for(const x of cls) await save('clients',x);
+  for(const x of jobs) await save('jobs',x);
+  for(const x of exps) await save('expenses',x);
+  for(const x of labs) await save('labor',x);
+  for(const x of qs) await save('quotes',x);
+}
+
+/* =========================================================
+   Boot
+   ========================================================= */
+(async function boot(){
+  const had = loadLocal();
+  applyI18n(); renderPublic(); route();
+  connectDb().then(()=>{ if(mode==='db'){ applyBiz(); } });
+  if(!had){
+    const seed = async()=>{ if(mode==='local' && isEmpty()){ await loadSample(); if(document.body.classList.contains('is-admin')) renderAdmin(); } };
+    if(!window.claude) seed(); else setTimeout(seed, 11000);
+  }
+})();
+</script>
+</body>
+</html>
