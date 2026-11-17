@@ -4,6 +4,7 @@ Sitio para una empresa de pintura de casas en EE. UU. y panel para el dueño.
 
 - **Sitio público (inglés / español):** servicios, explorador de colores, ideas de diseño y calculadora de presupuesto por pie cuadrado (estilo + dificultad + capas + primer). El cliente puede enviar su solicitud.
 - **Panel del dueño** (enlace *Owner login* al pie de la página, PIN `1234`): resumen, cotizaciones, trabajos, calendario, clientes, materiales y gastos, equipo y pagos, ajustes de precios.
+- **Diseño:** interfaz adaptada al estilo storefront de la plantilla Onsus, con encabezado en dos niveles, tipografías Inter/Poppins, acento rojo y tarjetas limpias. Se conservan las funciones originales y la publicación como sitio estático.
 
 Todo está en un solo archivo: `index.html`. No necesita instalar nada.
 
